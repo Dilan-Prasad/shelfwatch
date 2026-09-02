@@ -626,7 +626,9 @@ class Pulse:
                 self.product["aliases"] = self.product["aliases"][:3]
         self.model_in_listing = model_in_listing
         self.q_full = self.q if (category and all(contains_word(self.q, t) for t in tokens(category))) else f"{self.q} {category}".strip()
-        self.product["short"] = short if model_in_listing or not model else (self.q if size == "" else f"{self.q} ({size})")
+        size_in_q = bool(size) and re.sub(r"[\s-]", "", size.lower()) in re.sub(r"[\s-]", "", self.q.lower())
+        self.product["short"] = short if model_in_listing or not model else (self.q if (size == "" or size_in_q) else f"{self.q} ({size})")
+        self.product["label"] = model if model_in_listing else self.q
         self.cat_tokens = [t for t in tokens(category) if t not in tokens(brand)]
         self.name_tokens = [t for t in tokens(name) if t not in tokens(brand)][:8]
 
@@ -1505,7 +1507,7 @@ class Pulse:
         model_items = [r for r in self.recalls if r["model_level"]]
         fam = [r for r in self.recalls if not r["model_level"]][:3]
         safety_mentions = [m for m in web_mentions if m["safety_issue"]]
-        label = P["model"] or P["name"].split(",")[0]
+        label = P.get("label") or P["model"] or P["name"].split(",")[0]
         if model_items:
             r_status = "act"
             r_head = f"CPSC recall names the {label}: {model_items[0]['hazard'] or 'see notice'}."
