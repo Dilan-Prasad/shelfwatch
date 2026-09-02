@@ -47,9 +47,10 @@ EXA_API_KEY = os.environ.get("EXA_API_KEY", "")
 EXA_BASE = "https://api.exa.ai"
 PORT = int(os.environ.get("PORT", "8020"))
 
-MAX_CONCURRENCY = 6
+MAX_CONCURRENCY = 8
 MIN_CALL_SPACING = 0.12
-WINDOW_DAYS = 90
+WINDOW_DAYS = 365          # retrieval + price-series window
+SPARK_DAYS = 90            # sentiment sparkline window
 
 # public-deployment spend guard (a live report costs ~$0.30-0.45 in Exa credits)
 LIVE_RUNS_PER_HOUR = int(os.environ.get("LIVE_RUNS_PER_HOUR", "24"))
@@ -244,12 +245,24 @@ def parse_walmart(url):
 
 # ---------------------------------------------------------------- exa client
 
+async def _no_emit(e):
+    return None
+
+
+# one process-wide limiter: concurrent reports share the 10 rps key budget
+_SEM = None
+_SPACE_LOCK = None
+_LAST_START = [0.0]
+
+
 class Exa:
     def __init__(self, emit=None):
-        self.emit = emit or (lambda e: None)
-        self.sem = asyncio.Semaphore(MAX_CONCURRENCY)
-        self.last_start = 0.0
-        self.lock = asyncio.Lock()
+        global _SEM, _SPACE_LOCK
+        self.emit = emit or _no_emit
+        if _SEM is None:
+            _SEM, _SPACE_LOCK = asyncio.Semaphore(MAX_CONCURRENCY), asyncio.Lock()
+        self.sem = _SEM
+        self.lock = _SPACE_LOCK
         self.calls = []
         self.raw = []
         self.cost = 0.0
@@ -260,14 +273,14 @@ class Exa:
 
     async def _space(self):
         async with self.lock:
-            wait = self.last_start + MIN_CALL_SPACING - time.monotonic()
+            wait = _LAST_START[0] + MIN_CALL_SPACING - time.monotonic()
             if wait > 0:
                 await asyncio.sleep(wait)
-            self.last_start = time.monotonic()
+            _LAST_START[0] = time.monotonic()
 
     async def call(self, path, body, tag, timeout=45.0):
         async with self.sem:
-            for attempt in range(3):
+            for attempt in range(5):
                 await self._space()
                 t0 = time.monotonic()
                 try:
@@ -276,7 +289,7 @@ class Exa:
                 except (httpx.TimeoutException, httpx.TransportError) as e:
                     ms = int((time.monotonic() - t0) * 1000)
                     self.calls.append({"endpoint": path, "tag": tag, "ms": ms, "cost": 0, "error": type(e).__name__})
-                    if attempt == 2:
+                    if attempt == 4:
                         await self.emit({"type": "call", "endpoint": path, "tag": tag, "ms": ms, "cost": 0, "error": type(e).__name__})
                         return {}
                     await asyncio.sleep(1.0 + attempt)
@@ -284,10 +297,10 @@ class Exa:
                 ms = int((time.monotonic() - t0) * 1000)
                 if r.status_code == 429 or r.status_code >= 500:
                     self.calls.append({"endpoint": path, "tag": tag, "ms": ms, "cost": 0, "error": r.status_code})
-                    if attempt == 2:
+                    if attempt == 4:
                         await self.emit({"type": "call", "endpoint": path, "tag": tag, "ms": ms, "cost": 0, "error": r.status_code})
                         return {}
-                    await asyncio.sleep(1.5 * (attempt + 1))
+                    await asyncio.sleep((2.0 if r.status_code == 429 else 1.0) * (2 ** attempt))
                     continue
                 try:
                     d = r.json()
@@ -388,6 +401,20 @@ RECALL_SCHEMA = {
     "required": ["is_recall_notice", "product", "applies_to_model", "same_brand_family"],
 }
 
+SAFETY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "is_safety_related": {"type": "boolean", "description": "true only if the page reports a recall, lawsuit, injury, fire, burn, shock, choking, contamination, regulatory action or other safety issue"},
+        "kind": {"type": "string", "enum": ["recall", "lawsuit", "incident_report", "regulatory", "investigation", "none"]},
+        "product": {"type": "string", "description": "the product named"},
+        "issue": {"type": "string", "description": "one short sentence: what the safety issue is"},
+        "date": {"type": "string"},
+        "applies_to_model": {"type": "boolean", "description": "true only if the target model is explicitly named"},
+        "same_brand": {"type": "boolean"},
+    },
+    "required": ["is_safety_related", "kind", "product", "applies_to_model", "same_brand"],
+}
+
 LISTING_SCHEMA = {
     "type": "object",
     "properties": {
@@ -461,6 +488,15 @@ SENTIMENT_EXCLUDE = sorted(set(list(BIG_BOX.keys()) + ["walmart.com", "youtube.c
                                                       "manualslib.com", "manualslib.tech", "camelcamelcamel.com", "upcitemdb.com", "upczilla.com",
                                                       "aliexpress.com", "temu.com", "pinterest.com", "facebook.com", "instagram.com"]))
 
+FORUM_DOMAINS = ["quora.com", "forums.redflagdeals.com", "slickdeals.net", "hardforum.com", "avsforum.com", "houzz.com", "food52.com", "macrumors.com",
+                 "head-fi.org", "dpreview.com", "cooking.stackexchange.com", "lemmy.world", "news.ycombinator.com", "community.bestbuy.com",
+                 "community.homedepot.com", "forums.anandtech.com", "eurobricks.com", "brickset.com", "flyertalk.com", "garagejournal.com", "chefsteps.com",
+                 "egullet.org", "resetera.com", "neogaf.com", "askmetafilter.com", "metafilter.com", "thekitchn.com", "seriouseats.com", "chowhound.com",
+                 "bogleheads.org", "stackexchange.com", "candlepowerforums.com", "rcgroups.com", "dogforums.com", "dogforum.com", "thedogforum.com"]
+TRACKER_DOMAINS = ["camelcamelcamel.com", "pricepulse.app", "keepa.com", "pricespy.com", "shopsavvy.com", "brickeconomy.com", "brickset.com", "price.com",
+                   "pricegrabber.com", "honey.com", "pricehistory.app", "priceintime.com", "klarna.com"]
+SAFETY_DOMAINS = ["saferproducts.gov", "recalls.gov", "fda.gov", "nhtsa.gov", "usda.gov", "consumerreports.org", "classaction.org", "topclassactions.com"]
+
 MERCHANT_COLORS = ["oklch(74% 0.12 250)", "oklch(74% 0.12 300)", "oklch(74% 0.12 215)", "oklch(74% 0.12 275)",
                    "oklch(74% 0.12 330)", "oklch(74% 0.13 190)", "oklch(74% 0.12 160)", "oklch(74% 0.12 40)",
                    "oklch(74% 0.12 90)", "oklch(74% 0.12 20)", "oklch(74% 0.10 120)", "oklch(74% 0.10 350)"]
@@ -531,6 +567,7 @@ class Pulse:
         self.listings_raw = []
         self.retail = []
         self.recalls = []
+        self.safety_news = []
         self.dupes_raw = []
         self.camel = None
         self.product = {}
@@ -685,6 +722,8 @@ class Pulse:
             if self.alias_hit(text) and not self.other_model(text):
                 return True
             return False
+        if self.alias_hit(text):
+            return True
         if b and (contains_word(text, b) or (len(b) >= 5 and b.lower() in text.lower())):
             hits = sum(1 for t in self.cat_tokens if contains_word(text, t))
             nh = sum(1 for t in self.name_tokens if contains_word(text, t))
@@ -772,9 +811,9 @@ class Pulse:
     async def scan_youtube(self):
         await self.surface("youtube", "scanning")
         r1, r2 = await asyncio.gather(
-            self.exa.search("youtube:neural", f"{self.q_full} review", numResults=15, includeDomains=["youtube.com"],
+            self.exa.search("youtube:neural", f"{self.q_full} review", numResults=30, includeDomains=["youtube.com"],
                             startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
-            self.exa.search("youtube:keyword", f"{self.q}", type="keyword", numResults=15, includeDomains=["youtube.com"],
+            self.exa.search("youtube:keyword", f"{self.q}", type="keyword", numResults=30, includeDomains=["youtube.com"],
                             contents=self._sent_contents()),
         )
         seen = set()
@@ -785,14 +824,14 @@ class Pulse:
 
     async def scan_tiktok(self):
         await self.surface("tiktok", "scanning")
-        res = await self.exa.search("tiktok", f"{self.q}", numResults=12, includeDomains=["tiktok.com"], contents=self._sent_contents())
+        res = await self.exa.search("tiktok", f"{self.q}", numResults=20, includeDomains=["tiktok.com"], contents=self._sent_contents())
         ms = self._keep_mentions(res, "tiktok")
         self.mentions.extend(ms)
         await self.surface("tiktok", "done" if len(ms) >= 3 else "thin", len(ms), "" if len(ms) >= 3 else "tiktok pages are rarely dated or indexed")
 
     async def scan_news(self):
         await self.surface("news", "scanning")
-        res = await self.exa.search("news", f"{self.q_full}", numResults=15, category="news",
+        res = await self.exa.search("news", f"{self.q_full}", numResults=30, category="news",
                                     startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents())
         ms = self._keep_mentions(res, "news")
         self.mentions.extend(ms)
@@ -800,17 +839,18 @@ class Pulse:
 
     async def scan_forums(self):
         await self.surface("forums", "scanning")
-        r1, r2, r3 = await asyncio.gather(
-            self.exa.search("forums:experience", f"{self.q_full} owner experience review after using it", numResults=20,
+        r1, r2, r3, r4 = await asyncio.gather(
+            self.exa.search("forums:experience", f"{self.q_full} owner experience review after using it", numResults=30,
                             excludeDomains=SENTIMENT_EXCLUDE, startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
             self.exa.search("forums:problems", f"{self.q} problems complaints issues", numResults=20,
                             excludeDomains=SENTIMENT_EXCLUDE, startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
-            self.exa.search("forums:keyword", f"{self.q} review", type="keyword", numResults=15,
+            self.exa.search("forums:keyword", f"{self.q} review", type="keyword", numResults=50,
                             excludeDomains=SENTIMENT_EXCLUDE, startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
+            self.exa.search("forums:communities", f"{self.q_full} opinion", numResults=30, includeDomains=FORUM_DOMAINS, contents=self._sent_contents()),
         )
         seen = set()
         ms = []
-        for r in list(r1) + list(r2) + list(r3):
+        for r in list(r1) + list(r2) + list(r3) + list(r4):
             if r.get("url") in seen:
                 continue
             seen.add(r.get("url"))
@@ -818,27 +858,52 @@ class Pulse:
         self.mentions.extend(ms)
         await self.surface("forums", "done" if len(ms) >= 3 else "thin", len(ms), "" if len(ms) >= 3 else "few forum or blog posts in the window")
 
+    REDDIT_SCHEMA = {"type": "object", "properties": {"quotes": {"type": "array", "items": {"type": "object", "properties": {
+        "text": {"type": "string"}, "sentiment": {"type": "string", "enum": ["positive", "negative", "mixed"]}, "url": {"type": "string"},
+        "complaint": {"type": "string", "description": "3-6 word lowercase label if the quote voices a complaint, else empty"}},
+        "required": ["text", "sentiment", "url"]}}}, "required": ["quotes"]}
+
     async def scan_reddit(self):
         await self.surface("reddit", "scanning")
-        r1, r2 = await asyncio.gather(
+        r1, r2, ans = await asyncio.gather(
             self.exa.search("reddit:redditrecs", f"{self.q}", numResults=5, includeDomains=["redditrecs.com"], contents=self._sent_contents()),
             self.exa.search("reddit:quoted", f"reddit users discuss the {self.q_full}", numResults=10, excludeDomains=["reddit.com", "walmart.com"],
-                            startPublishedDate=iso_days_ago(180), contents=self._sent_contents()),
+                            startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
+            self.exa.answer("reddit:answer", (f"What do Reddit users say about the {self.q_full} ({self.q})? Give up to 8 verbatim quotes from Reddit users "
+                                              f"(as reproduced on pages that quote Reddit threads), each with its sentiment, the URL of the page it appears on, "
+                                              f"and a short complaint label if it voices one. Only quotes about this exact product."), self.REDDIT_SCHEMA),
         )
         ms = self._keep_mentions(r1, "reddit")
+        a = ans.get("answer") if isinstance(ans.get("answer"), dict) else {}
+        for qd in (a or {}).get("quotes") or []:
+            if not isinstance(qd, dict):
+                continue
+            text = norm(qd.get("text") or "")
+            url = qd.get("url") or ""
+            if len(text) < 20 or not url.startswith("http") or "reddit.com" in host_of(url):
+                continue
+            if not self.relevant(text, url) and not self.alias_hit(text) and not (self.product["brand"] and contains_word(text, self.product["brand"])):
+                continue
+            sent = qd.get("sentiment") if qd.get("sentiment") in ("positive", "negative", "mixed") else "neutral"
+            label = norm(qd.get("complaint") or "").lower()[:60] or None
+            pc = pain_category_of((label or "") + " " + text) if sent in ("negative", "mixed") else None
+            ms.append({"url": url, "title": f"Reddit user (quoted on {host_of(url)}): {text[:70]}…", "date": None, "_dt": None, "source": "reddit",
+                       "host": host_of(url), "sentiment": sent, "complaint_voiced": pc is not None, "pain_category": pc, "pain_label": label,
+                       "praise_label": None if sent != "positive" else text[:60].lower(), "quote": text[:200], "safety_issue": False,
+                       "source_kind": "forum_thread", "mentions_product": True, "highlight": text[:240], "_reddit_quote": True})
         for r in r2:
             blob = (r.get("title", "") + " " + " ".join(r.get("highlights") or []) + " " + str(r.get("summary") or "")).lower()
             if "reddit" in blob or "r/" in blob:
                 ms.extend(self._keep_mentions([r], "reddit"))
         seen = set()
-        ms = [m for m in ms if not (m["url"] in seen or seen.add(m["url"]))]
+        ms = [m for m in ms if not ((m["url"], m.get("quote")) in seen or seen.add((m["url"], m.get("quote"))))]
         self.mentions.extend(ms)
         await self.surface("reddit", "indirect" if ms else "degraded", len(ms),
-                           "reddit.com blocks crawlers · via pages quoting Reddit" if ms else "reddit.com blocks crawlers · no quoting pages found")
+                           "reddit.com blocks crawlers · quotes via pages that cite Reddit" if ms else "reddit.com blocks crawlers · no quoting pages found")
 
     async def scan_retail(self):
         await self.surface("retail", "scanning")
-        res = await self.exa.search("retail-reviews", f"{self.q_full} customer reviews", numResults=8, includeDomains=RETAIL_REVIEW_DOMAINS,
+        res = await self.exa.search("retail-reviews", f"{self.q_full} customer reviews", numResults=15, includeDomains=RETAIL_REVIEW_DOMAINS,
                                     contents={"summary": {"query": (f"From the customer reviews / 'customers say' sections on this retail page for the {self.q_full}: "
                                                                     f"star rating, review count, complaints customers voice, praises customers voice. Only what customers actually say."),
                                                           "schema": RETAIL_SCHEMA}})
@@ -905,8 +970,8 @@ class Pulse:
         r1, r2, r3 = await asyncio.gather(
             self.exa.search("cpsc:model", f"{b} {m} {self.product['category']} recall".strip(), numResults=10, includeDomains=["cpsc.gov"],
                             startPublishedDate=iso_days_ago(730), contents={"summary": {"query": sq, "schema": RECALL_SCHEMA}}),
-            self.exa.search("cpsc:brand", f"{b} recalls product due to hazard", numResults=15, includeDomains=["cpsc.gov"],
-                            startPublishedDate=iso_days_ago(730), contents={"summary": {"query": sq, "schema": RECALL_SCHEMA}}),
+            self.exa.search("cpsc:brand", f"{b} recalls product due to hazard", numResults=20, includeDomains=["cpsc.gov"],
+                            startPublishedDate=iso_days_ago(1825), contents={"summary": {"query": sq, "schema": RECALL_SCHEMA}}),
             self.exa.search("cpsc:category", f"{b} {self.product['category']} recall hazard", numResults=10, includeDomains=["cpsc.gov"],
                             startPublishedDate=iso_days_ago(730), contents={"summary": {"query": sq, "schema": RECALL_SCHEMA}}),
         )
@@ -954,7 +1019,38 @@ class Pulse:
             self.recalls.append({"product": product, "date": d.isoformat()[:10] if d else None,
                                  "hazard": hazard, "units": units,
                                  "url": u, "model_level": model_hit and bool(s.get("applies_to_model")), "brand_family": not model_hit})
-        await self.surface("cpsc", "done", len(self.recalls), "cpsc.gov recall notices · 24 months")
+        await self.surface("cpsc", "done", len(self.recalls) + len(self.safety_news), "cpsc.gov + safety news · model 24 mo · brand 5 y")
+
+    async def scan_safety_news(self):
+        b, m = self.product["brand"], self.product["model"]
+        sq = (f"Does this page report a safety issue (recall, lawsuit, injury, fire, burn, shock, choking, contamination, regulatory action) for a "
+              f"{b} product? Which product, what issue, when? Does it explicitly name the {b} {m or ''} {self.product['category']}? Same brand ({b})?")
+        r1, r2 = await asyncio.gather(
+            self.exa.search("safety:news", f"{b} {self.product['category']} recall fire injury lawsuit safety", numResults=20, category="news",
+                            startPublishedDate=iso_days_ago(WINDOW_DAYS), contents={"summary": {"query": sq, "schema": SAFETY_SCHEMA}}),
+            self.exa.search("safety:agencies", f"{b} {self.product['category']} recall", numResults=10, includeDomains=SAFETY_DOMAINS,
+                            contents={"summary": {"query": sq, "schema": SAFETY_SCHEMA}}),
+        )
+        seen = set()
+        for r in list(r1) + list(r2):
+            s = parse_summary(r.get("summary"))
+            if not s.get("is_safety_related") or (s.get("kind") or "none") == "none":
+                continue
+            text = " ".join([norm(r.get("title")), norm(s.get("product")), norm(s.get("issue"))])
+            brand_hit = bool(b) and (contains_word(text, b) or (len(b) >= 5 and b.lower() in text.lower()))
+            if not brand_hit:
+                continue
+            key = re.sub(r"\W+", " ", norm(r.get("title")).lower())[:50]
+            if key in seen:
+                continue
+            seen.add(key)
+            d = parse_date(r.get("publishedDate")) or parse_date(s.get("date") or "")
+            self.safety_news.append({"title": norm(r.get("title"))[:120], "url": r.get("url"), "date": d.isoformat()[:10] if d else None,
+                                     "kind": s.get("kind"), "product": norm(s.get("product") or "")[:100], "issue": norm(s.get("issue") or "")[:160],
+                                     "applies_to_model": bool(m) and contains_word(text, m) and bool(s.get("applies_to_model")),
+                                     "host": host_of(r.get("url", ""))})
+        self.safety_news.sort(key=lambda x: (x["applies_to_model"], x["kind"] == "recall", x["date"] or ""), reverse=True)
+        self.safety_news = self.safety_news[:8]
 
     # ---- 3. price & listings
     def _listing_contents(self):
@@ -1012,14 +1108,35 @@ class Pulse:
     async def scan_price_events(self):
         sq = (f"Does this page report a specific price for the exact {self.q_full} at a specific merchant? Extract merchant, price, the previous price if a "
               f"drop is described, the date the price was observed/published, the kind of event, and condition (new/used/refurbished).")
-        r1, r2 = await asyncio.gather(
-            self.exa.search("prices:events", f"{self.q} price drop deal sale", numResults=20, excludeDomains=["walmart.com"],
-                            startPublishedDate=iso_days_ago(WINDOW_DAYS), contents={"summary": {"query": sq, "schema": PRICE_EVENT_SCHEMA}}),
-            self.exa.search("prices:walmart", f"{self.q} walmart price", numResults=10, excludeDomains=["walmart.com"],
-                            startPublishedDate=iso_days_ago(WINDOW_DAYS), contents={"summary": {"query": sq, "schema": PRICE_EVENT_SCHEMA}}),
+        pc = {"summary": {"query": sq, "schema": PRICE_EVENT_SCHEMA}}
+        since = iso_days_ago(WINDOW_DAYS)
+        rs = await asyncio.gather(
+            self.exa.search("prices:deal", f"{self.q} deal", numResults=20, excludeDomains=["walmart.com"], startPublishedDate=since, contents=pc),
+            self.exa.search("prices:sale", f"{self.q} sale", numResults=20, excludeDomains=["walmart.com"], startPublishedDate=since, contents=pc),
+            self.exa.search("prices:drop", f"{self.q} price drop lowest price", numResults=20, excludeDomains=["walmart.com"], startPublishedDate=since, contents=pc),
+            self.exa.search("prices:news", f"{self.q} deal sale price", numResults=20, category="news", startPublishedDate=since, contents=pc),
+            self.exa.search("prices:walmart", f"{self.q} walmart price", numResults=15, excludeDomains=["walmart.com"], startPublishedDate=since, contents=pc),
+            self.exa.answer("prices:answer", (f"List dated price observations for the exact {self.q_full} ({self.q}) at named merchants over the last 12 months: "
+                                              f"for each give merchant, price in USD, the date observed, and the source URL. Include sales, price drops and current prices. New condition only."),
+                            {"type": "object", "properties": {"observations": {"type": "array", "items": {"type": "object", "properties": {
+                                "merchant": {"type": "string"}, "price_usd": {"type": "number"}, "date": {"type": "string"}, "url": {"type": "string"}},
+                                "required": ["merchant", "price_usd", "date", "url"]}}}, "required": ["observations"]}),
         )
+        ans = rs[-1] if isinstance(rs[-1], dict) else {}
+        a = ans.get("answer") if isinstance(ans.get("answer"), dict) else {}
+        for o in (a or {}).get("observations") or []:
+            if not isinstance(o, dict):
+                continue
+            price, d, url, merchant = to_float(o.get("price_usd")), parse_date(str(o.get("date") or "")), o.get("url") or "", norm(o.get("merchant") or "")
+            if not (price and d and url.startswith("http") and merchant) or (now_utc() - d).days > WINDOW_DAYS or d > now_utc() + timedelta(days=1):
+                continue
+            if re.search(r"used|refurb|renew|open box|3rd party", merchant, re.I):
+                continue
+            merchant = re.split(r"\s*[|·(]", merchant)[0].strip()[:28]
+            self.observations.append({"merchant": merchant, "price": price, "prev": None, "date": d, "url": url, "host": host_of(url),
+                                      "event": "listing", "kind": "event", "_answer": True})
         seen = set()
-        for r in list(r1) + list(r2):
+        for r in [x for res in rs[:-1] if isinstance(res, list) for x in res]:
             if r.get("url") in seen:
                 continue
             seen.add(r.get("url"))
@@ -1050,16 +1167,21 @@ class Pulse:
                                       "event": s.get("event") or "none", "kind": "event"})
 
     async def scan_camel(self):
-        res = await self.exa.search("prices:camel", f"{self.q}", numResults=3, includeDomains=["camelcamelcamel.com"],
-                                    contents={"summary": {"query": f"Amazon price history for the exact {self.q_full}: current, lowest ever, highest ever, average, with dates if shown.", "schema": CAMEL_SCHEMA}})
+        res = await self.exa.search("prices:trackers", f"{self.q} price history", numResults=10, includeDomains=TRACKER_DOMAINS,
+                                    contents={"summary": {"query": f"Price history for the exact {self.q_full}: current, lowest ever, highest ever, average, with dates if shown.", "schema": CAMEL_SCHEMA}})
+        best = None
         for r in res:
             s = parse_summary(r.get("summary"))
-            if not s.get("exact_product") or not self.relevant(r.get("title"), r.get("url")):
+            if not s.get("exact_product") or not self.relevant(r.get("title"), r.get("url"), s.get("notes")):
                 continue
             c = {k: to_float(s.get(k)) for k in ("current", "lowest", "highest", "average")}
-            if any(c.values()):
-                self.camel = {**c, "url": r.get("url"), "notes": norm(s.get("notes") or "")[:200]}
-                break
+            filled = sum(1 for v in c.values() if v)
+            if filled and (best is None or filled > best[0]):
+                host = host_of(r.get("url", ""))
+                label = {"camelcamelcamel.com": "Amazon price history", "pricehistory.app": "Amazon price history", "keepa.com": "Amazon price history",
+                         "brickeconomy.com": "LEGO market history", "brickset.com": "LEGO price history"}.get(host, f"{pretty_host(host)} price history")
+                best = (filled, {**c, "url": r.get("url"), "notes": norm(s.get("notes") or "")[:200], "label": label, "host": host})
+        self.camel = best[1] if best else None
 
     async def scan_dupes(self):
         res = await self.exa.search("walmart:dupes", f"{self.q_full}", numResults=25, includeDomains=["walmart.com"])
@@ -1080,7 +1202,7 @@ class Pulse:
         seen = set()
         mentions = []
         for m in self.mentions:
-            key = (m["url"], m.get("highlight", "")[:40]) if m.get("_retail") else m["url"]
+            key = (m["url"], m.get("highlight", "")[:40]) if (m.get("_retail") or m.get("_reddit_quote")) else m["url"]
             if key in seen:
                 continue
             seen.add(key)
@@ -1095,7 +1217,7 @@ class Pulse:
 
         score = score_of(opinion)
         last30 = [m for m in opinion if m["_dt"] and (as_of - m["_dt"]).days <= 30]
-        prev = [m for m in opinion if m["_dt"] and 30 < (as_of - m["_dt"]).days <= WINDOW_DAYS]
+        prev = [m for m in opinion if m["_dt"] and 30 < (as_of - m["_dt"]).days <= 120]
         s_last, s_prev = score_of(last30, 4), score_of(prev, 4)
         delta = round(s_last - s_prev, 2) if s_last is not None and s_prev is not None else None
         if delta is None:
@@ -1103,8 +1225,9 @@ class Pulse:
         trend_word = "n/a" if delta is None else ("cooling" if delta <= -0.03 else "warming" if delta >= 0.03 else "steady")
         # sparkline: 13 samples, 21-day trailing windows, linear fill
         spark = []
+        spark_start = as_of - timedelta(days=SPARK_DAYS - 1)
         for i in range(13):
-            t = start + timedelta(days=i * (WINDOW_DAYS - 1) / 12)
+            t = spark_start + timedelta(days=i * (SPARK_DAYS - 1) / 12)
             win = [val[m["sentiment"]] for m in opinion if m["_dt"] and t - timedelta(days=21) <= m["_dt"] <= t]
             spark.append(round(sum(win) / len(win), 3) if len(win) >= 3 else None)
         if sum(1 for x in spark if x is not None) >= 6:
@@ -1154,7 +1277,7 @@ class Pulse:
                 sources[0]["pct"] += 100 - sum(s["pct"] for s in sources)
             di = [m for m in items if m["_dt"]]
             c30 = sum(1 for m in di if (as_of - m["_dt"]).days <= 30)
-            cprev = sum(1 for m in di if 30 < (as_of - m["_dt"]).days <= WINDOW_DAYS) / 2.0
+            cprev = sum(1 for m in di if 30 < (as_of - m["_dt"]).days <= WINDOW_DAYS) / ((WINDOW_DAYS - 30) / 30.0)
             if len(di) < 3:
                 trend, pct = "flat", None
             elif cprev == 0 and c30 >= 2:
@@ -1196,7 +1319,7 @@ class Pulse:
         for label, n in praise_groups.most_common(3):
             ds = praise_dates[label]
             c30 = sum(1 for d in ds if (as_of - d).days <= 30)
-            cp = sum(1 for d in ds if 30 < (as_of - d).days <= WINDOW_DAYS) / 2.0
+            cp = sum(1 for d in ds if 30 < (as_of - d).days <= WINDOW_DAYS) / ((WINDOW_DAYS - 30) / 30.0)
             tr = "flat" if len(ds) < 3 or cp == 0 else ("rising" if c30 >= cp * 1.25 else "falling" if c30 <= cp * 0.75 else "flat")
             praises.append({"title": label, "mentions": n, "trend": tr})
 
@@ -1337,7 +1460,7 @@ class Pulse:
         # price headline
         if change_pct is not None and median_now:
             acc = f"down {abs(change_pct)}%" if change_pct < 0 else f"up {change_pct}%" if change_pct > 0 else "flat"
-            lead, tail = "Web median price ", f" over {WINDOW_DAYS} days."
+            lead, tail = "Web median price ", " over 12 months."
             if walmart:
                 diff = walmart["price"] - median_now
                 em = (f"Walmart last observed at ${walmart['price']:.2f} ({datetime.fromisoformat(walmart['observed']).strftime('%b %-d')}) — "
@@ -1346,9 +1469,9 @@ class Pulse:
                 em = "Walmart's own price is not exposed to crawlers; walmart.com is compared through prices the open web reports."
             price_headline = {"lead": lead, "accent": acc, "tail": tail, "em": em}
         elif median_now:
-            price_headline = {"lead": "Web median price ", "accent": f"${median_now:.2f}", "tail": " today.", "em": "Not enough dated observations to show a 90-day trend."}
+            price_headline = {"lead": "Web median price ", "accent": f"${median_now:.2f}", "tail": " today.", "em": "Not enough merchants tracked for 30+ days to call a 12-month trend."}
         else:
-            price_headline = {"lead": "No exact-product price observations ", "accent": "on the open web", "tail": " in the last 90 days.", "em": "Try a product with broader retail distribution."}
+            price_headline = {"lead": "No exact-product price observations ", "accent": "on the open web", "tail": " in the last 12 months.", "em": "Try a product with broader retail distribution."}
 
         # ---------- listings radar
         exact = [l for l in self.listings_raw if l["type"] == "exact"]
@@ -1396,7 +1519,7 @@ class Pulse:
                 continue
             ev_seen.add(k)
             ev2.append(e)
-        events = sorted(ev2[:4], key=lambda e: e["day"])
+        events = sorted(ev2[:6], key=lambda e: e["day"])
         for i, e in enumerate(events):
             e["n"] = i + 1
             e.pop("_p", None)
@@ -1514,7 +1637,12 @@ class Pulse:
 
         # ---------- recall
         model_items = [r for r in self.recalls if r["model_level"]]
+        for sn in self.safety_news:
+            if sn["applies_to_model"] and sn["kind"] == "recall":
+                model_items.append({"product": sn["product"] or sn["title"], "date": sn["date"], "hazard": sn["issue"], "units": None, "url": sn["url"],
+                                    "model_level": True, "brand_family": False, "via": sn["host"]})
         fam = [r for r in self.recalls if not r["model_level"]][:3]
+        safety_news = [sn for sn in self.safety_news if not (sn["applies_to_model"] and sn["kind"] == "recall")][:6]
         safety_mentions = [m for m in web_mentions if m["safety_issue"]]
         label = P.get("label") or P["model"] or P["name"].split(",")[0]
         if model_items:
@@ -1556,7 +1684,7 @@ class Pulse:
         else:
             st = "clear"
         board.append({"key": "price", "num": "02", "title": "Price History", "status": st,
-                      "line1": f"web median {change_pct:+d}% / 90d" if change_pct is not None else (f"web median ${median_now:.2f}" if median_now else "no dated observations"),
+                      "line1": f"web median {change_pct:+d}% / 12mo" if change_pct is not None else (f"web median ${median_now:.2f}" if median_now else "no dated observations"),
                       "line1_color": "red" if change_pct is not None and change_pct <= -10 else "grey",
                       "line2": (f"Walmart {'+' if walmart['price'] >= median_now else '−'}${abs(walmart['price'] - median_now):.2f} vs median" if walmart and median_now else "Walmart price not observed"),
                       "line2_color": "red" if walmart and median_now and walmart["price"] > median_now + 0.5 else "grey"})
@@ -1583,11 +1711,13 @@ class Pulse:
                       "line2": (f"{len(dupes_other)} variant/refurb/accessory pages" if dupes_other else "review equity split across pages") if nd else (f"{len(dupes_other)} variant/refurb/accessory pages" if dupes_other else "no sibling pages indexed"),
                       "line2_color": "grey"})
         # recall
-        board.append({"key": "recall", "num": "05", "title": "Recall & Safety", "status": "act" if model_items else ("watch" if fam or safety_mentions else "clear"),
-                      "line1": f"CPSC recall · {model_items[0]['date'] or 'dated'}" if model_items else f"no CPSC recall · {label}",
+        n_flags = len(fam) + len(safety_news)
+        board.append({"key": "recall", "num": "05", "title": "Recall & Safety", "status": "act" if model_items else ("watch" if n_flags or safety_mentions else "clear"),
+                      "line1": f"recall · {model_items[0]['date'] or 'dated'}" if model_items else f"no CPSC recall · {label}",
                       "line1_color": "red" if model_items else "grey",
-                      "line2": f"{len(fam)} brand-family flag{'s' if len(fam) != 1 else ''}" if fam else (f"{len(safety_mentions)} safety-classified complaint{'s' if len(safety_mentions)!=1 else ''}" if safety_mentions else "no brand-family flags"),
-                      "line2_color": "amber" if fam or safety_mentions else "grey"})
+                      "line2": (f"{n_flags} brand-family flag{'s' if n_flags != 1 else ''}" if n_flags else
+                                (f"{len(safety_mentions)} safety-classified complaint{'s' if len(safety_mentions)!=1 else ''}" if safety_mentions else "no brand-family flags")),
+                      "line2_color": "amber" if n_flags or safety_mentions else "grey"})
 
         # ---------- verdict
         if model_items:
@@ -1637,6 +1767,7 @@ class Pulse:
             "recall": {"verified": as_of.isoformat()[:10],
                        "model_level": {"status": r_status, "headline": r_head, "items": model_items},
                        "brand_family": fam,
+                       "safety_news": safety_news,
                        "complaint_scan": {"count": len(safety_mentions), "items": [{"title": m["title"], "url": m["url"], "date": m["date"]} for m in safety_mentions][:5]}},
             "cost": {"calls": len(self.exa.calls), "dollars": round(self.exa.cost, 3)},
             "calls": self.exa.calls,
@@ -1651,7 +1782,7 @@ class Pulse:
             await self.surface(k, "queued")
         await asyncio.gather(
             self.scan_reddit(), self.scan_youtube(), self.scan_tiktok(), self.scan_news(), self.scan_forums(), self.scan_retail(), self.scan_cpsc(),
-            self.scan_listings(), self.scan_price_events(), self.scan_camel(), self.scan_dupes(),
+            self.scan_listings(), self.scan_price_events(), self.scan_camel(), self.scan_dupes(), self.scan_safety_news(),
             return_exceptions=True,
         )
         # alias support may have landed after the resolve event; resend

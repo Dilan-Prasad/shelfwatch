@@ -35,7 +35,9 @@ const STATIC = '/static/';
 // ============================================================ state
 const S = { view: 'intake', error: null, presets: [], url: '', gen: null, report: null, mock: false, es: null, shown: {}, hoverDay: null, deep: { status: 'idle' }, advanceTimer: null, chartModel: null };
 let MOCK = null;
-const newGen = () => ({ resolve: null, surfaces: SURFACES.map(([key, label]) => ({ key, label, status: 'queued', n: null, note: '' })), scanStarted: false, count: null, countDone: false, windowDays: 90, report: null, progress: 4, calls: [] });
+const newGen = () => ({ resolve: null, surfaces: SURFACES.map(([key, label]) => ({ key, label, status: 'queued', n: null, note: '' })), scanStarted: false, count: null, countDone: false, windowDays: 365, report: null, progress: 4, calls: [] });
+const winLabel = d => (d >= 360 ? '12 months' : `${d || 90} days`);
+const winShort = d => (d >= 360 ? '12mo' : `${d || 90}d`);
 
 // ============================================================ intake view
 function viewIntake() {
@@ -111,7 +113,7 @@ function viewGenerating() {
     </div>
     <div class="gen-count" id="g-count" ${g.count != null ? '' : 'hidden'}>
       <div class="count-num" id="g-count-num">${g.countDone ? num(g.count) : '0'}</div>
-      <div class="count-cap" id="g-count-cap">external mentions found in the last ${g.windowDays || 90} days.</div>
+      <div class="count-cap" id="g-count-cap">external mentions found in the last ${winLabel(g.windowDays)}.</div>
     </div>
   </div>
   <button class="skip" id="g-skip" data-action="skip" ${g.report ? '' : 'disabled'}>${g.report ? 'skip to report →' : 'building report…'}</button>
@@ -123,7 +125,7 @@ const patchSurfaces = () => { const sc = $('#g-scan'); if (sc) sc.hidden = false
 const patchSkip = () => { const b = $('#g-skip'); if (!b) return; b.disabled = !(S.gen && S.gen.report); b.textContent = b.disabled ? 'building report…' : 'skip to report →'; };
 function animateCount(target) {
   const el = $('#g-count-num'); const box = $('#g-count'); if (box) box.hidden = false; if (!el) return;
-  const cap = $('#g-count-cap'); if (cap) cap.textContent = `external mentions found in the last ${S.gen.windowDays || 90} days.`;
+  const cap = $('#g-count-cap'); if (cap) cap.textContent = `external mentions found in the last ${winLabel(S.gen.windowDays)}.`;
   const t0 = performance.now(), dur = 1400;
   const step = now => {
     const p = Math.min(1, (now - t0) / dur);
@@ -242,8 +244,8 @@ function secSentiment(r) {
   const stats = `
     <div class="stats">
       <div class="stat"><div class="stat-label">sentiment score</div><div class="stat-val"><span class="stat-num">${s.score != null ? Number(s.score).toFixed(2) : '—'}</span>${dchip}</div><div class="stat-sub">${esc(s.score != null ? (s.trend_word || '') : `insufficient signal · ${num(s.n_labeled || 0)} labeled`)}</div>${retail}</div>
-      <div class="stat"><div class="stat-label">mentions · ${m.window_days || 90}d</div><div class="stat-val"><span class="stat-num">${num(m.total)}</span>${vchip}</div><div class="stat-sub">last 30d · ${num(m.last30)} · prior 30d · ${num(m.prev30)}</div></div>
-      <div class="stat"><div class="stat-label">sentiment · ${m.window_days || 90}d</div>${spark || `<div class="spark-cap" style="margin-top:14px">not enough dated mentions for a trend line</div>`}<div class="spark-cap">${s.score_prev != null && s.score_last30 != null && s.delta30 != null ? `${Number(s.score_prev).toFixed(2)} → ${Number(s.score_last30).toFixed(2)} over 30d` : (s.n_labeled != null ? `${num(s.n_labeled)} labeled mentions` : '')}</div></div>
+      <div class="stat"><div class="stat-label">mentions · ${winShort(m.window_days)}</div><div class="stat-val"><span class="stat-num">${num(m.total)}</span>${vchip}</div><div class="stat-sub">last 30d · ${num(m.last30)} · prior 30d · ${num(m.prev30)}</div></div>
+      <div class="stat"><div class="stat-label">sentiment · 90d</div>${spark || `<div class="spark-cap" style="margin-top:14px">not enough dated mentions for a trend line</div>`}<div class="spark-cap">${s.score_prev != null && s.score_last30 != null && s.delta30 != null ? `${Number(s.score_prev).toFixed(2)} → ${Number(s.score_last30).toFixed(2)} over 30d` : (s.n_labeled != null ? `${num(s.n_labeled)} labeled mentions` : '')}</div></div>
       <div class="stat"><div class="stat-label">open pain clusters</div><div class="stat-val"><span class="stat-num">${clusters.length}</span>${rising ? `<span class="chip chip-red">${rising} rising</span>` : `<span class="chip chip-grey">none rising</span>`}</div><div class="stat-sub">${clusters.length ? 'ranked below' : 'no recurring complaint found'}</div></div>
     </div>`;
   let body = '';
@@ -425,7 +427,7 @@ const Chart = (() => {
 function priceTone(text) { const t = String(text || '').toLowerCase(); if (/down|drop|fell|lower|cheaper|cut/.test(t)) return ''; if (/\bup\b|rose|higher|pricier|increase/.test(t)) return 'green'; return 'blue'; }
 function secPrice(r) {
   const P = r.price || {}; const asof = fmtAsOf(r.as_of); const days = (P.series && P.series.days) || 90;
-  const head = secHead('02', 'The Price Question', 'Is this product getting more expensive or cheaper across the web?', `as_of ${asof}<br>${days} days · exact-product listings`);
+  const head = secHead('02', 'The Price Question', 'Is this product getting more expensive or cheaper across the web?', `as_of ${asof}<br>${winLabel(days)} · exact-product listings`);
   const hasSeries = P.series && Array.isArray(P.series.merchants) && P.series.merchants.some(m => m && m.points && m.points.length);
   if (!hasSeries) {
     const h = P.headline || {};
@@ -437,16 +439,16 @@ function secPrice(r) {
   const toggles = m.merchants.map(mm => `<button class="mtoggle" data-action="toggle" data-key="${attr(mm.key)}"><i style="border-color:${mm.color};background:${S.shown[mm.key] ? mm.color : 'transparent'}"></i><span style="color:${S.shown[mm.key] ? '#EEF1F7' : '#6E7A94'}">${esc(mm.name)}</span></button>`).join('');
   const legend = `<div class="chart-legend" id="chart-legend"><span class="lg"><span class="lg-band"></span>web low–high</span><span class="lg"><span class="lg-med"></span>web median</span>${P.walmart ? `<span class="lg"><span class="lg-wm"></span>Walmart</span>` : ''}<span class="lg-sep"></span><span class="lg-lab">merchants</span>${toggles}</div>`;
   const events = (P.events || []).slice(0, 4);
-  const evHtml = events.length ? `<div class="events">${events.map(e => `<div class="ev"><span class="ev-n">${esc(e.n ?? '')}</span><div class="ev-body"><span class="ev-date">${fmtDate(e.date)}</span><br>${esc(e.label || '')} ${link(e.url, 'source ↗', 'ev-src')}</div></div>`).join('')}</div>` : `<div class="under">no dated price event was found inside the ${days}-day window</div>`;
+  const evHtml = events.length ? `<div class="events">${events.map(e => `<div class="ev"><span class="ev-n">${esc(e.n ?? '')}</span><div class="ev-body"><span class="ev-date">${fmtDate(e.date)}</span><br>${esc(e.label || '')} ${link(e.url, 'source ↗', 'ev-src')}</div></div>`).join('')}</div>` : `<div class="under">no dated price event was found inside the ${winLabel(days)} window</div>`;
   const rng = P.range || null; const wm = P.walmart;
   const diff = wm && wm.price != null && P.median_now != null ? P.median_now - wm.price : null;
   const strip = `<div class="pstrip">
-      <div><span class="k">${days}d range</span><span class="v">${rng ? `${money(rng.low)}–${money(rng.high)}` : '—'}</span></div>
+      <div><span class="k">${winShort(days)} range</span><span class="v">${rng ? `${money(rng.low)}–${money(rng.high)}` : '—'}</span></div>
       <div><span class="k">Walmart position</span><span class="v">${esc(P.walmart_position || (wm ? '—' : 'unknown (walmart price not observed)'))}</span></div>
       <div><span class="k">web median</span><span class="v">${money(P.median_now)}</span>${wm && wm.price != null ? `<span class="k" style="margin-left:10px">vs Walmart</span><span class="v">${money(wm.price)}</span>${diff != null ? `<span class="v ${diff < 0 ? 'neg' : diff > 0 ? 'pos' : ''}">(${sign(diff)}${money(Math.abs(diff))})</span>` : ''}` : `<span class="k" style="margin-left:10px">Walmart</span><span class="v dim">not observed</span>`}</div>
     </div>`;
   const ah = P.amazon_history;
-  const ahHtml = ah && (ah.lowest != null || ah.current != null) ? `<div class="pstrip ah"><div><span class="k">Amazon price history</span>${ah.current != null ? `<span class="k" style="margin-left:10px">current</span><span class="v">${money(ah.current)}</span>` : ''}${ah.lowest != null ? `<span class="k" style="margin-left:10px">all-time low</span><span class="v">${money(ah.lowest)}</span>` : ''}${ah.highest != null ? `<span class="k" style="margin-left:10px">high</span><span class="v">${money(ah.highest)}</span>` : ''}${ah.average != null ? `<span class="k" style="margin-left:10px">average</span><span class="v">${money(ah.average)}</span>` : ''}<span class="k" style="margin-left:10px">${link(ah.url, 'camelcamelcamel ↗')}</span></div></div>` : '';
+  const ahHtml = ah && (ah.lowest != null || ah.current != null) ? `<div class="pstrip ah"><div><span class="k">${esc(ah.label || 'Amazon price history')}</span>${ah.current != null ? `<span class="k" style="margin-left:10px">current</span><span class="v">${money(ah.current)}</span>` : ''}${ah.lowest != null ? `<span class="k" style="margin-left:10px">all-time low</span><span class="v">${money(ah.lowest)}</span>` : ''}${ah.highest != null ? `<span class="k" style="margin-left:10px">high</span><span class="v">${money(ah.highest)}</span>` : ''}${ah.average != null ? `<span class="k" style="margin-left:10px">average</span><span class="v">${money(ah.average)}</span>` : ''}<span class="k" style="margin-left:10px">${link(ah.url, esc(ah.host || 'source') + ' ↗')}</span></div></div>` : '';
   const wmNote = wm && wm.price != null ? `<div class="under">Walmart ${money(wm.price)} = last price observed on the open web${wm.observed ? ` on ${fmtDateY(wm.observed)}` : ''}${wm.source_label ? ` via ${link(wm.url, esc(wm.source_label) + ' ↗')}` : ''}; walmart.com itself blocks crawlers.</div>` : '';
   return `<section id="s02" class="wrap sec rise d3">${head}${headline}${legend}<div class="chart-wrap" id="price-chart"></div>${evHtml}${strip}${ahHtml}<p class="method"><b>Method</b> — ${esc(P.method_note || 'exact-product listings only (accessories and variants excluded); each merchant line carries its last observed price forward.')}</p>${wmNote}</section>`;
 }
@@ -568,7 +570,10 @@ function secRecall(r) {
     </div>`;
   const scan = cs.count > 0 ? `<div class="cscan"><span class="lab">complaint scan</span><span><span style="color:#F5B14A">${cs.count} safety-classified complaint${cs.count === 1 ? '' : 's'}</span> in the product's mention graph this quarter <span class="dim">(safety claims are tracked separately from quality complaints).</span></span><ul>${(cs.items || []).slice(0, 5).map(it => `<li>${link(it.url, esc(it.title || it.url || 'source'))}${it.date ? ` <span class="dim mono" style="font-size:11px">${fmtDate(it.date)}</span>` : ''}</li>`).join('')}</ul></div>`
     : `<div class="cscan"><span class="lab">complaint scan</span><span>No safety-classified complaint in the product's mention graph this quarter <span class="dim">(safety claims are tracked separately from quality complaints).</span></span></div>`;
-  return `<section id="s05" class="wrap sec rise d6">${head}<div class="rgrid">${modelCard}${famCard}</div>${scan}</section>`;
+  const sn = R.safety_news || [];
+  const KIND = { recall: 'recall', lawsuit: 'lawsuit', incident_report: 'incident', regulatory: 'regulatory', investigation: 'investigation' };
+  const newsBlock = sn.length ? `<div class="snews"><div class="snews-head"><span class="lab">safety news · ${esc(brand)} · 12 months</span><span class="dim mono" style="font-size:11px">news + agency surfaces · brand-level, not this model unless marked</span></div><ul>${sn.map(x => `<li><span class="kind ${esc(x.kind || '')}">${esc(KIND[x.kind] || x.kind || 'news')}</span>${link(x.url, esc(x.title || x.product || 'source'))}${x.issue ? `<span class="issue">${esc(x.issue)}</span>` : ''}<span class="ev-meta">${esc(x.host || '')}${x.date ? ' · ' + fmtDateY(x.date) : ''}${x.applies_to_model ? ' · <b style="color:#FF7A70">names this model</b>' : ''}</span></li>`).join('')}</ul></div>` : '';
+  return `<section id="s05" class="wrap sec rise d6">${head}<div class="rgrid">${modelCard}${famCard}</div>${scan}${newsBlock}</section>`;
 }
 function footer(r) {
   const c = r.cost || {};
