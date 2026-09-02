@@ -48,6 +48,11 @@ echo "EXA_API_KEY=your-key" > .env
 python3 app.py                # → http://localhost:8020
 ```
 
+`QUOTE_KEYS=1` (in `.env`) wraps the product key in quotes for the neural review, community, news and long-tail passes and the
+big-box keyword pass — Exa's exact-phrase matching, measured in `tools/quotes_test.py` (Dyson V8 Cyclone review pass: 14 → 19
+exact hits of 20, sibling models 1 → 0). Left plain on purpose: the deal-post pass (no gain) and the walmart.com family pass
+(quotes only cut recall). Enabled on pulse.salua.ai.
+
 `presets.json` holds up to three demo presets (label + URL). Reports are cached per item id for 24 h
 (`cache/<id>.json`); `?url=…&auto=cached` replays a cached report with zero API calls, `&auto=live` forces a run.
 `?mock=1&view=report` renders `static/mock.json` without a backend.
