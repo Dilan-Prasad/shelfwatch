@@ -1089,7 +1089,7 @@ class Pulse:
         val = {"positive": 1.0, "mixed": 0.5, "negative": 0.0}
         opinion = [m for m in mentions if m["sentiment"] in val]
 
-        def score_of(ms, minimum=4):
+        def score_of(ms, minimum=6):
             xs = [val[m["sentiment"]] for m in ms]
             return round(sum(xs) / len(xs), 2) if len(xs) >= minimum else None
 
@@ -1401,6 +1401,15 @@ class Pulse:
             e["n"] = i + 1
             e.pop("_p", None)
         rows = [r for r in rows if r["price"] or r["stock"] != "unknown" or not r["long_tail"]]
+        # a "listing" priced at a small fraction of the market is an accessory or a bundle the classifier let through
+        anchor = None
+        priced_all = [r["price"] for r in rows if r["price"]]
+        if wprice:
+            anchor = wprice
+        elif len(priced_all) >= 3:
+            anchor = statistics.median(priced_all)
+        if anchor:
+            rows = [r for r in rows if not r["price"] or 0.3 * anchor <= r["price"] <= 3.0 * anchor]
         rows.sort(key=lambda r: (r["price"] is None, r["stock"] == "OOS", r["price"] or 0))
         rows = rows[:10]
         priced = [r for r in rows if r["price"] and r["stock"] != "OOS"]
