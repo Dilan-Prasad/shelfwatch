@@ -266,6 +266,7 @@ class Exa:
         self.calls = []
         self.raw = []
         self.cost = 0.0
+        self.no_credits = False
         self.client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0))
 
     async def close(self):
@@ -306,6 +307,8 @@ class Exa:
                     d = r.json()
                 except Exception:
                     d = {}
+                if r.status_code == 402:
+                    self.no_credits = True
                 if r.status_code != 200:
                     self.calls.append({"endpoint": path, "tag": tag, "ms": ms, "cost": 0, "error": r.status_code, "detail": str(d)[:200]})
                     await self.emit({"type": "call", "endpoint": path, "tag": tag, "ms": ms, "cost": 0, "error": r.status_code})
@@ -1036,11 +1039,17 @@ class Pulse:
             s = parse_summary(r.get("summary"))
             if not s.get("is_safety_related") or (s.get("kind") or "none") == "none":
                 continue
-            text = " ".join([norm(r.get("title")), norm(s.get("product")), norm(s.get("issue"))])
-            brand_hit = bool(b) and (contains_word(text, b) or (len(b) >= 5 and b.lower() in text.lower()))
-            if not brand_hit:
+            title, product, issue = norm(r.get("title")), norm(s.get("product") or ""), norm(s.get("issue") or "")
+            named = " ".join([title, product])
+            brand_hit = bool(b) and (contains_word(named, b) or (len(b) >= 5 and b.lower() in named.lower()))
+            if not brand_hit or not s.get("same_brand"):
                 continue
-            key = re.sub(r"\W+", " ", norm(r.get("title")).lower())[:50]
+            if re.search(r"does not (report|mention|name|involve)|no (safety )?issue|not (a |an )?" + re.escape(b.lower()) + r"|different brand|unrelated|master list|market shift|roundup|round-up", (issue + " " + title).lower()):
+                continue
+            if re.search(r"\b(list|guide|deals?|sale)\b", title.lower()) and s.get("kind") in ("regulatory", "investigation"):
+                continue
+            text = " ".join([title, product, issue])
+            key = re.sub(r"\W+", " ", title.lower())[:50]
             if key in seen:
                 continue
             seen.add(key)
@@ -1132,7 +1141,9 @@ class Pulse:
                 continue
             if re.search(r"used|refurb|renew|open box|3rd party", merchant, re.I):
                 continue
-            merchant = re.split(r"\s*[|·(]", merchant)[0].strip()[:28]
+            merchant = self._clean_merchant(merchant, host_of(url))
+            if not merchant:
+                continue
             self.observations.append({"merchant": merchant, "price": price, "prev": None, "date": d, "url": url, "host": host_of(url),
                                       "event": "listing", "kind": "event", "_answer": True})
         seen = set()
@@ -1156,8 +1167,8 @@ class Pulse:
                 continue
             if not is_us_host(host_of(r.get("url", ""))) and "walmart" not in merchant.lower():
                 continue
-            merchant = re.split(r"\s*[|·(]", merchant)[0].strip()[:28]
-            if not merchant or re.search(r"\.(it|de|fr|es|eu|uk|ca|au)\b", merchant.lower()):
+            merchant = self._clean_merchant(merchant, host_of(r.get("url", "")))
+            if not merchant:
                 continue
             prev = to_float(s.get("previous_price_usd"))
             if prev is not None and abs(prev - price) < 0.5:
@@ -1165,6 +1176,24 @@ class Pulse:
             self.observations.append({"merchant": merchant, "price": price, "prev": prev,
                                       "date": d, "url": r.get("url"), "host": host_of(r.get("url", "")),
                                       "event": s.get("event") or "none", "kind": "event"})
+
+    def _clean_merchant(self, merchant, host):
+        """Merchant named by a deal post / answer. Known stores keep their canonical name; a store naming itself
+        gets its host; aggregates and second-hand marketplaces are dropped."""
+        m = re.split(r"\s*[|·(]", norm(merchant))[0].strip()[:28]
+        ml = m.lower()
+        if not m or re.search(r"\.(it|de|fr|es|eu|uk|ca|au)\b|multiple|various|several|retailers|marketplace|n/a|unknown|walmart marketplace", ml):
+            return None
+        if re.search(r"ebay|craigslist|facebook|mercari|poshmark|offerup|aliexpress|temu|wish\b|dhgate|shopgoodwill", ml):
+            return None
+        if "walmart" in ml:
+            return "Walmart"
+        for h, name in BIG_BOX.items():
+            if name.lower() == ml or h.split(".")[0] == re.sub(r"[^a-z0-9]", "", ml):
+                return name
+        if host and host not in BIG_BOX and host not in NON_MERCHANT and re.sub(r"[^a-z0-9]", "", ml) in re.sub(r"[^a-z0-9]", "", host):
+            return pretty_host(host) if is_us_host(host) else None
+        return m
 
     async def scan_camel(self):
         res = await self.exa.search("prices:trackers", f"{self.q} price history", numResults=10, includeDomains=TRACKER_DOMAINS,
@@ -1277,18 +1306,33 @@ class Pulse:
                 sources[0]["pct"] += 100 - sum(s["pct"] for s in sources)
             di = [m for m in items if m["_dt"]]
             c30 = sum(1 for m in di if (as_of - m["_dt"]).days <= 30)
-            cprev = sum(1 for m in di if 30 < (as_of - m["_dt"]).days <= WINDOW_DAYS) / ((WINDOW_DAYS - 30) / 30.0)
+            praw = sum(1 for m in di if 30 < (as_of - m["_dt"]).days <= WINDOW_DAYS)
+            cprev = praw / ((WINDOW_DAYS - 30) / 30.0)      # prior months, per-30-day rate
             if len(di) < 3:
                 trend, pct = "flat", None
-            elif cprev == 0 and c30 >= 2:
+            elif praw == 0 and c30 >= 3:
                 trend, pct = "new", None
+            elif c30 >= 3 and cprev > 0 and (c30 - cprev) / cprev >= 0.5:
+                trend, pct = "rising", round((c30 - cprev) / cprev * 100)
+            elif praw >= 4 and c30 >= 1 and c30 <= cprev * 0.5:
+                trend, pct = "falling", round((c30 - cprev) / cprev * 100)
             else:
-                pct = round((c30 - cprev) / cprev * 100) if cprev else None
-                trend = "rising" if pct is not None and pct >= 25 else "falling" if pct is not None and pct <= -25 else "flat"
+                trend, pct = "flat", None
             firsts = [m["_dt"] for m in di]
             quote = None
-            cands = [m for m in items if m["quote"] and 20 <= len(m["quote"]) <= 200 and pat and re.search(pat, m["quote"].lower())]
-            cands.sort(key=lambda m: (bool(pat and re.search(pat, m["quote"].lower())), m["source_kind"] in ("owner_review", "forum_thread", "video"), m["sentiment"] == "negative", len(m["quote"])), reverse=True)
+            NEG = re.compile(r"\bnot\b|n't|\bno\b|hard|difficult|hate|poor|bad|issue|problem|disappoint|complain|wish|lack|only|broke|stopp|fail|loud|small|too |annoy|worst|cheap|flimsy|uneven|smell|slow|expensive|overpriced|inconsistent|flak|peel|wear|leak|burn", re.I)
+            POS = re.compile(r"easy|great|love|excellent|recommend|perfect|best|exceptional|solid|reliable|works well|happy|pleased|fast|crispy|dependable", re.I)
+            def voices(m):
+                q = m["quote"] or ""
+                if not (20 <= len(q) <= 200 and pat and re.search(pat, q.lower())):
+                    return False
+                if m.get("_retail"):
+                    return True
+                if not (m["sentiment"] in ("negative", "mixed") or NEG.search(q)):
+                    return False
+                return not (POS.search(q) and not NEG.search(q))
+            cands = [m for m in items if voices(m)]
+            cands.sort(key=lambda m: (m["sentiment"] == "negative", bool(NEG.search(m["quote"] or "")), m["source_kind"] in ("owner_review", "forum_thread", "video"), len(m["quote"] or "")), reverse=True)
             if cands:
                 q = cands[0]
                 quote = {"text": q["quote"], "source_label": q["host"] or q["source"], "url": q["url"]}
@@ -1319,8 +1363,9 @@ class Pulse:
         for label, n in praise_groups.most_common(3):
             ds = praise_dates[label]
             c30 = sum(1 for d in ds if (as_of - d).days <= 30)
-            cp = sum(1 for d in ds if 30 < (as_of - d).days <= WINDOW_DAYS) / ((WINDOW_DAYS - 30) / 30.0)
-            tr = "flat" if len(ds) < 3 or cp == 0 else ("rising" if c30 >= cp * 1.25 else "falling" if c30 <= cp * 0.75 else "flat")
+            praw = sum(1 for d in ds if 30 < (as_of - d).days <= WINDOW_DAYS)
+            cp = praw / ((WINDOW_DAYS - 30) / 30.0)
+            tr = "flat" if len(ds) < 3 or cp == 0 else ("rising" if c30 >= 3 and c30 >= cp * 1.5 else "falling" if praw >= 4 and 1 <= c30 <= cp * 0.5 else "flat")
             praises.append({"title": label, "mentions": n, "trend": tr})
 
         retail = None
@@ -1770,21 +1815,30 @@ class Pulse:
                        "safety_news": safety_news,
                        "complaint_scan": {"count": len(safety_mentions), "items": [{"title": m["title"], "url": m["url"], "date": m["date"]} for m in safety_mentions][:5]}},
             "cost": {"calls": len(self.exa.calls), "dollars": round(self.exa.cost, 3)},
+            "scan_errors": getattr(self, "scan_errors", []),
             "calls": self.exa.calls,
         }
         return report
 
     async def run(self):
         await self.resolve()
+        if self.exa.no_credits:
+            await self.exa.close()
+            raise RuntimeError("Exa credits are exhausted on the server's API key — top up at dashboard.exa.ai, then run again")
         await self.emit_raw("resolve", {"id": self.id, "url": self.p["url"], "name": self.product["name"], "brand": self.product["brand"],
                                         "model": self.product["model"], "short": self.product["short"], "aliases": self.product["aliases"]})
         for k in ("reddit", "youtube", "tiktok", "news", "forums", "retail", "cpsc"):
             await self.surface(k, "queued")
-        await asyncio.gather(
-            self.scan_reddit(), self.scan_youtube(), self.scan_tiktok(), self.scan_news(), self.scan_forums(), self.scan_retail(), self.scan_cpsc(),
-            self.scan_listings(), self.scan_price_events(), self.scan_camel(), self.scan_dupes(), self.scan_safety_news(),
-            return_exceptions=True,
-        )
+        names = ["reddit", "youtube", "tiktok", "news", "forums", "retail", "cpsc", "listings", "price_events", "camel", "dupes", "safety_news"]
+        scans = [self.scan_reddit(), self.scan_youtube(), self.scan_tiktok(), self.scan_news(), self.scan_forums(), self.scan_retail(), self.scan_cpsc(),
+                 self.scan_listings(), self.scan_price_events(), self.scan_camel(), self.scan_dupes(), self.scan_safety_news()]
+        results = await asyncio.gather(*scans, return_exceptions=True)
+        self.scan_errors = []
+        for name, res in zip(names, results):
+            if isinstance(res, Exception):
+                import traceback
+                self.scan_errors.append(f"{name}: {type(res).__name__}: {str(res)[:120]}")
+                print("SCAN ERROR", name, "".join(traceback.format_exception(type(res), res, res.__traceback__))[-700:])
         # alias support may have landed after the resolve event; resend
         await self.emit_raw("resolve", {"id": self.id, "url": self.p["url"], "name": self.product["name"], "brand": self.product["brand"],
                                         "model": self.product["model"], "short": self.product["short"], "aliases": self.product["aliases"], "final": True})
@@ -1917,7 +1971,8 @@ async def api_pulse(request: Request, url: str = "", mode: str = "live"):
             except Exception as e:  # noqa
                 import traceback
                 traceback.print_exc()
-                await q.put(("error", {"code": "upstream", "message": f"Report failed: {type(e).__name__}: {str(e)[:160]}"}))
+                msg = str(e)[:200] if isinstance(e, RuntimeError) else f"Report failed: {type(e).__name__}: {str(e)[:160]}"
+                await q.put(("error", {"code": "upstream", "message": msg}))
             finally:
                 await q.put((None, None))
 
