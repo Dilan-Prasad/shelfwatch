@@ -1489,6 +1489,7 @@ class Pulse:
         for o in self.observations:
             mk = o["merchant"].lower()
             if "walmart" in mk:
+                o["src_host"] = o.get("host")
                 o["host"] = "walmart.com"
             obs.append({**o, "in_stock": None if o["event"] != "out_of_stock" else False, "seller": None, "long_tail": False, "published": None})
 
@@ -1510,7 +1511,7 @@ class Pulse:
         walmart = None
         if walmart_obs:
             w = walmart_obs[-1]
-            walmart = {"price": w["price"], "observed": w["date"].isoformat()[:10], "source_label": w["host"] or "open web", "url": w["url"]}
+            walmart = {"price": w["price"], "observed": w["date"].isoformat()[:10], "source_label": w.get("src_host") or host_of(w["url"]) or "open web", "url": w["url"]}
         web_obs = [o for o in obs if o["mname"] != "Walmart" and o["date"] >= start - timedelta(days=1)]
         if len(web_obs) >= 4:
             med = statistics.median(o["price"] for o in web_obs)
@@ -2196,23 +2197,30 @@ def merge_deep(rep, deep):
                 return name
         return m
     fresh_rows = {}
-    for o in deep.get("offers") or []:
+    key_toks = [t for t in tokens(rep["product"].get("model") or "") + tokens(rep["product"].get("short") or "") if len(t) > 2][:4]
+    def exactness(o):
+        v = (o.get("variant") or "").lower()
+        return sum(1 for t in key_toks if t in v)
+    for o in sorted(deep.get("offers") or [], key=lambda o: (-exactness(o), to_float(o.get("price_usd")) or 0)):
         price = to_float(o.get("price_usd"))
         if not price:
             continue
         name = canon(o.get("merchant") or "")
-        row = next((r for r in L["rows"] if nk(r["merchant"]) == nk(name) or (nk(r["merchant"]) and nk(r["merchant"]) in nk(name))), None)
+        row = next((r for r in L["rows"] if nk(r["merchant"]) == nk(name) or (nk(r["merchant"]) and nk(r["merchant"]) in nk(name)) or (nk(name) and nk(name) in nk(r["merchant"]))), None)
+        if row is not None and row.get("price_source", "").startswith("live"):
+            continue          # this merchant already has its most exact live offer
         lp = to_float(o.get("list_price_usd"))
         on_sale = bool(lp and lp > price + 0.5)
+        variant = norm(o.get("variant") or "")[:60] or None
         if row:
             row.update({"price": price, "url": o.get("url") or row["url"], "price_source": "live · Affiliate.com feed", "price_note": None,
-                        "list_price": lp if on_sale else None, "on_sale": on_sale,
+                        "list_price": lp if on_sale else None, "on_sale": on_sale, "variant": variant,
                         "stock": "in stock" if o.get("in_stock") is True else ("OOS" if o.get("in_stock") is False else row["stock"])})
         else:
             host = host_of(o.get("url") or "")
             row = {"merchant": name, "price": price, "delta30": None, "delta30_note": None, "stock": "in stock" if o.get("in_stock") is True else ("OOS" if o.get("in_stock") is False else "unknown"),
                    "type": "exact", "first_seen": None, "url": o.get("url") or "", "long_tail": host not in BIG_BOX, "seller": None,
-                   "price_source": "live · Affiliate.com feed", "list_price": lp if on_sale else None, "on_sale": on_sale, "deep": True}
+                   "price_source": "live · Affiliate.com feed", "list_price": lp if on_sale else None, "on_sale": on_sale, "deep": True, "variant": variant}
             L["rows"].append(row)
         fresh_rows[nk(name)] = row
         # today's point on the price chart
@@ -2241,8 +2249,9 @@ def merge_deep(rep, deep):
     P["series"]["median"], P["series"]["low"], P["series"]["high"] = med, lo, hi
     P["median_now"] = med[-1]
     P["n_merchants"] = len(P["series"]["merchants"])
-    # walmart
-    w = deep.get("walmart")
+    # walmart: only an offer for THIS item id sets the primary listing's price
+    offers_w_all = deep.get("walmart_offers") or ([] if not deep.get("walmart") else [deep["walmart"]])
+    w = next((o for o in offers_w_all if re.search(rf"/(?:ip|product)/(?:[^?#]*/)?{rep['id']}(?:[/?#]|$)", o.get("url") or "")), None)
     if w and w.get("price"):
         P["walmart"] = {"price": w["price"], "observed": (deep.get("as_of") or "")[:10], "source_label": "Affiliate.com catalog via Exa Connect", "url": w.get("url") or rep["url"]}
         L["walmart_price"] = w["price"]
@@ -2296,14 +2305,24 @@ def merge_deep(rep, deep):
             continue
         target = next((d for d in D["exact"] + D["other"] if d["id"] == did), None)
         if target:
-            target.update({"price": o["price"], "seller": o.get("merchant") or "Walmart", "confirmed": True, "url": o.get("url") or target["url"]})
+            target.update({"price": o["price"], "seller": o.get("merchant") or "Walmart", "confirmed": True, "url": o.get("url") or target["url"],
+                           "variant": o.get("variant")})
+            if target in D["other"] and target.get("kind") in ("variant", "accessory"):
+                D["other"].remove(target)
+                target["kind"] = "variant"
+                D["exact"].append(target)
         elif did not in seen_ids:
             base = f"{rep['product'].get('brand', '')} {rep['product'].get('model', '')}".strip() or rep["product"].get("short", "")
-            D["exact"].append({"id": did, "url": o.get("url"), "title": f"{base} {o.get('variant') or ''}".strip() + f" · walmart.com listing {did}", "kind": "exact",
-                               "indexed": None, "price": o["price"], "seller": o.get("merchant") or "Walmart", "confirmed": True})
+            D["exact"].append({"id": did, "url": o.get("url"), "title": f"{base} {o.get('variant') or ''}".strip() + f" · walmart.com listing {did}", "kind": "variant",
+                               "indexed": None, "price": o["price"], "seller": o.get("merchant") or "Walmart", "confirmed": True, "variant": o.get("variant")})
             seen_ids.add(did)
-    D["exact"].sort(key=lambda d: (not d.get("confirmed"), d.get("price") or 1e9))
+    D["exact"].sort(key=lambda d: (not d.get("confirmed"), d.get("kind") != "exact", d.get("price") or 1e9))
     D["count_exact"] = len(D["exact"])
+    n_var = sum(1 for d in D["exact"] if d.get("kind") == "variant")
+    if n_var:
+        D["summary"] = (f"walmart.com carries {len(D['exact'])} other listing{'s' if len(D['exact']) != 1 else ''} in this product family"
+                        f"{' (' + str(n_var) + ' variant' + ('s' if n_var != 1 else '') + ' confirmed live with prices via the Affiliate.com catalog)' if n_var else ''}. "
+                        "Shoppers searching the product can land on any of them; review equity and ad spend split across the pages.")
     if any(d.get("confirmed") for d in D["exact"]) or D["primary"].get("confirmed"):
         D["note"] = ("Prices and sellers marked ✓ come from the Affiliate.com catalog via Exa Connect (live). Review counts are not readable from the open web — walmart.com blocks crawlers. "
                      "Listings without ✓ come from Exa's index of walmart.com titles and are unverified.")
@@ -2325,7 +2344,9 @@ def merge_deep(rep, deep):
             b["status"] = "watch" if n else "clear"
             b["line1"] = f"{n} sibling walmart.com listing{'s' if n != 1 else ''}" if n else "single walmart.com listing"
             cheaper = [d for d in D["exact"] if d.get("price") and D["primary"].get("price") and d["price"] < D["primary"]["price"] - 0.5]
-            b["line2"] = f"{cheaper[0]['title'][:24]} ${cheaper[0]['price']:.2f} under primary" if cheaper else b["line2"]
+            conf = sum(1 for d in D["exact"] if d.get("confirmed"))
+            b["line2"] = (f"{cheaper[0]['title'][:24]} ${cheaper[0]['price']:.2f} under primary" if cheaper
+                          else f"{conf} with live prices · {len(D['other'])} refurb/accessory pages" if conf else b["line2"])
     rep["live_merged"] = True
     return rep
 
