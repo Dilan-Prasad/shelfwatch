@@ -1,0 +1,941 @@
+{
+ "id": "1967919184",
+ "url": "https://www.walmart.com/ip/Ninja-AF101-Air-Fryer-that-Crisps-Roasts-Reheats-Dehydrates-for-Quick-Easy-Meals-4-Quart-Capacity-High-Gloss-Finish-Black-Grey/1967919184",
+ "as_of": "2026-09-01T04:00:00Z",
+ "from_cache": false,
+ "product": {
+  "name": "Ninja AF101 Air Fryer, 4-Quart Capacity, High-Gloss Finish, Black/Grey",
+  "brand": "Ninja",
+  "model": "AF101",
+  "upc": "622356554572",
+  "category": "air fryer",
+  "short": "Ninja / AF101 (4 qt)",
+  "aliases": [
+   {
+    "text": "Ninja AF101",
+    "support": 0.99
+   },
+   {
+    "text": "Ninja Air Fryer 4qt",
+    "support": 0.94
+   },
+   {
+    "text": "Ninja 4-quart air fryer",
+    "support": 0.81
+   }
+  ]
+ },
+ "surfaces": [
+  {
+   "key": "reddit",
+   "label": "reddit",
+   "status": "indirect",
+   "n": 4,
+   "note": "via aggregators · reddit.com blocks crawlers"
+  },
+  {
+   "key": "youtube",
+   "label": "youtube",
+   "status": "done",
+   "n": 12,
+   "note": ""
+  },
+  {
+   "key": "tiktok",
+   "label": "tiktok",
+   "status": "thin",
+   "n": 2,
+   "note": "2 results"
+  },
+  {
+   "key": "news",
+   "label": "news",
+   "status": "done",
+   "n": 9,
+   "note": ""
+  },
+  {
+   "key": "forums",
+   "label": "forums & blogs",
+   "status": "done",
+   "n": 23,
+   "note": ""
+  },
+  {
+   "key": "retail",
+   "label": "retail reviews",
+   "status": "done",
+   "n": 4,
+   "note": "amazon · target · best buy"
+  },
+  {
+   "key": "cpsc",
+   "label": "cpsc",
+   "status": "done",
+   "n": 6,
+   "note": ""
+  }
+ ],
+ "mentions": {
+  "total": 4182,
+  "last30": 1240,
+  "prev30": 1105,
+  "velocity_pct": 12,
+  "window_days": 90
+ },
+ "verdict": {
+  "lead": "Positive but cooling.",
+  "em": "One pain cluster is growing:",
+  "accent": "fan noise."
+ },
+ "board": [
+  {
+   "key": "sentiment",
+   "num": "01",
+   "title": "Sentiment Pulse",
+   "status": "watch",
+   "line1": "0.72 · −0.04 / 30d",
+   "line1_color": "amber",
+   "line2": "1 pain cluster rising +40%",
+   "line2_color": "red"
+  },
+  {
+   "key": "price",
+   "num": "02",
+   "title": "Price History",
+   "status": "act",
+   "line1": "web median −13% / 90d",
+   "line1_color": "red",
+   "line2": "Walmart +$15.00 over median",
+   "line2_color": "grey"
+  },
+  {
+   "key": "listings",
+   "num": "03",
+   "title": "Listing Radar",
+   "status": "act",
+   "line1": "not the lowest price",
+   "line1_color": "red",
+   "line2": "NyzaStore −$30 · Target −$20",
+   "line2_color": "grey"
+  },
+  {
+   "key": "dupes",
+   "num": "04",
+   "title": "Internal Dupes",
+   "status": "watch",
+   "line1": "2 walmart.com listings",
+   "line1_color": "amber",
+   "line2": "B is $15 under primary",
+   "line2_color": "grey"
+  },
+  {
+   "key": "recall",
+   "num": "05",
+   "title": "Recall & Safety",
+   "status": "clear",
+   "line1": "no CPSC recall · AF101",
+   "line1_color": "grey",
+   "line2": "1 brand-family flag",
+   "line2_color": "amber"
+  }
+ ],
+ "sentiment": {
+  "score": 0.72,
+  "delta30": -0.04,
+  "trend_word": "cooling",
+  "score_prev": 0.76,
+  "spark": [
+   0.7,
+   0.72,
+   0.74,
+   0.75,
+   0.77,
+   0.78,
+   0.77,
+   0.77,
+   0.76,
+   0.76,
+   0.75,
+   0.73,
+   0.72
+  ],
+  "n_labeled": 41,
+  "retail": {
+   "rating": 4.7,
+   "review_count": 59429,
+   "merchant": "Amazon",
+   "url": "https://www.amazon.com/Ninja-AF101-Fryer-Black-gray/dp/B07FDJMC9Q"
+  },
+  "clusters": [
+   {
+    "rank": 1,
+    "title": "Loud fan at high setting",
+    "category": "noise",
+    "mentions": 341,
+    "trend": "rising",
+    "trend_pct": 40,
+    "first_seen": "2026-06-14",
+    "sources": [
+     {
+      "key": "reddit",
+      "pct": 62
+     },
+     {
+      "key": "youtube",
+      "pct": 27
+     },
+     {
+      "key": "tiktok",
+      "pct": 11
+     }
+    ],
+    "quote": {
+     "text": "…the high setting is genuinely loud, like a hair dryer next to your ear",
+     "source_label": "r/airfryer · 84 upvotes",
+     "url": "https://www.reddit.com/r/airfryer/"
+    },
+    "evidence": [
+     {
+      "title": "Ninja AF101 fan noise — is this normal?",
+      "url": "https://www.reddit.com/r/airfryer/",
+      "date": "2026-08-30",
+      "source": "reddit"
+     },
+     {
+      "title": "Could This STILL be the Best Budget Air Fryer?! (Ninja AF101)",
+      "url": "https://www.youtube.com/watch?v=g_HXgbSxpFc",
+      "date": "2026-06-09",
+      "source": "youtube"
+     },
+     {
+      "title": "How to Lower Volume on Ninja Air Fryer",
+      "url": "https://www.tiktok.com/discover/how-to-lower-volume-on-ninja-air-fryer",
+      "date": "2026-08-24",
+      "source": "tiktok"
+     }
+    ]
+   },
+   {
+    "rank": 2,
+    "title": "Timer beep is annoying",
+    "category": "controls_usability",
+    "mentions": 128,
+    "trend": "flat",
+    "trend_pct": null,
+    "first_seen": "2026-06-20",
+    "sources": [
+     {
+      "key": "forums",
+      "pct": 70
+     },
+     {
+      "key": "youtube",
+      "pct": 30
+     }
+    ],
+    "quote": null,
+    "evidence": [
+     {
+      "title": "Ninja AF101 Air Fryer Review (2026): Still Worth Buying?",
+      "url": "https://kitchenwarecompare.com/ninja-af101-air-fryer-review/",
+      "date": "2026-07-20",
+      "source": "forums"
+     }
+    ]
+   }
+  ],
+  "praises": [
+   {
+    "title": "Easy to clean",
+    "mentions": 812,
+    "trend": "flat"
+   },
+   {
+    "title": "Crispy, consistent results",
+    "mentions": 690,
+    "trend": "flat"
+   }
+  ]
+ },
+ "price": {
+  "walmart": {
+   "price": 119.99,
+   "observed": "2026-08-22",
+   "source_label": "allrecipes.com",
+   "url": "https://www.allrecipes.com/air-fryer-walmart-deals-august-2026-12065337"
+  },
+  "median_now": 104.99,
+  "median_start": 119.99,
+  "median_change_pct": -13,
+  "range": {
+   "low": 89.99,
+   "high": 129.99
+  },
+  "n_observations": 17,
+  "n_merchants": 6,
+  "series": {
+   "days": 90,
+   "start_date": "2026-06-04",
+   "merchants": [
+    {
+     "key": "amazon",
+     "name": "Amazon",
+     "color": "oklch(74% 0.12 250)",
+     "long_tail": false,
+     "points": [
+      {
+       "day": 0,
+       "price": 119.99,
+       "url": "https://www.amazon.com/Ninja-AF101-Fryer-Black-gray/dp/B07FDJMC9Q"
+      },
+      {
+       "day": 40,
+       "price": 104.99,
+       "url": "https://www.amazon.com/Ninja-AF101-Fryer-Black-gray/dp/B07FDJMC9Q"
+      },
+      {
+       "day": 51,
+       "price": 119.99,
+       "url": "https://www.amazon.com/Ninja-AF101-Fryer-Black-gray/dp/B07FDJMC9Q"
+      }
+     ],
+     "oos_from_day": null
+    },
+    {
+     "key": "target",
+     "name": "Target",
+     "color": "oklch(74% 0.12 300)",
+     "long_tail": false,
+     "points": [
+      {
+       "day": 0,
+       "price": 119.99,
+       "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826"
+      },
+      {
+       "day": 38,
+       "price": 109.99,
+       "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826"
+      },
+      {
+       "day": 52,
+       "price": 119.99,
+       "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826"
+      },
+      {
+       "day": 67,
+       "price": 109.99,
+       "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826"
+      },
+      {
+       "day": 86,
+       "price": 99.99,
+       "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826"
+      }
+     ],
+     "oos_from_day": null
+    },
+    {
+     "key": "bestbuy",
+     "name": "Best Buy",
+     "color": "oklch(74% 0.12 215)",
+     "long_tail": false,
+     "points": [
+      {
+       "day": 0,
+       "price": 119.99,
+       "url": "https://www.bestbuy.com/product/ninja-air-fryer-black-gray/JXJVXGK9G5"
+      },
+      {
+       "day": 16,
+       "price": 109.99,
+       "url": "https://www.bestbuy.com/product/ninja-air-fryer-black-gray/JXJVXGK9G5"
+      }
+     ],
+     "oos_from_day": 72
+    },
+    {
+     "key": "newegg",
+     "name": "Newegg",
+     "color": "oklch(74% 0.12 275)",
+     "long_tail": false,
+     "points": [
+      {
+       "day": 0,
+       "price": 129.99,
+       "url": "https://www.newegg.com/ninja-af101-4-quart/p/N82E16896437034"
+      },
+      {
+       "day": 21,
+       "price": 119.99,
+       "url": "https://www.newegg.com/ninja-af101-4-quart/p/N82E16896437034"
+      },
+      {
+       "day": 45,
+       "price": 109.99,
+       "url": "https://www.newegg.com/ninja-af101-4-quart/p/N82E16896437034"
+      }
+     ],
+     "oos_from_day": null
+    },
+    {
+     "key": "mcguckin",
+     "name": "McGuckin Hardware",
+     "color": "oklch(74% 0.12 330)",
+     "long_tail": true,
+     "points": [
+      {
+       "day": 0,
+       "price": 129.99,
+       "url": "https://www.mcguckin.com/"
+      },
+      {
+       "day": 27,
+       "price": 119.99,
+       "url": "https://www.mcguckin.com/"
+      }
+     ],
+     "oos_from_day": null
+    },
+    {
+     "key": "nyza",
+     "name": "NyzaStore",
+     "color": "oklch(74% 0.13 190)",
+     "long_tail": true,
+     "points": [
+      {
+       "day": 77,
+       "price": 89.99,
+       "url": "https://nyzastore.example.com/ninja-af101"
+      }
+     ],
+     "oos_from_day": null
+    }
+   ],
+   "median": [
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    114.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    107.49,
+    107.49,
+    107.49,
+    107.49,
+    107.49,
+    107.49,
+    107.49,
+    107.49,
+    107.49,
+    104.99,
+    104.99,
+    104.99,
+    104.99
+   ],
+   "low": [
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    104.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    109.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99,
+    89.99
+   ],
+   "high": [
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    129.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99,
+    119.99
+   ]
+  },
+  "events": [
+   {
+    "n": 1,
+    "day": 38,
+    "date": "2026-07-12",
+    "label": "Target promo: $119.99 → $109.99",
+    "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826",
+    "kind": "price_drop"
+   },
+   {
+    "n": 2,
+    "day": 72,
+    "date": "2026-08-15",
+    "label": "Best Buy goes OOS",
+    "url": "https://www.bestbuy.com/product/ninja-air-fryer-black-gray/JXJVXGK9G5",
+    "kind": "oos"
+   },
+   {
+    "n": 3,
+    "day": 77,
+    "date": "2026-08-20",
+    "label": "NyzaStore enters at $89.99 — new seller, new web low",
+    "url": "https://nyzastore.example.com/ninja-af101",
+    "kind": "new_seller"
+   },
+   {
+    "n": 4,
+    "day": 86,
+    "date": "2026-08-29",
+    "label": "Target cuts $109.99 → $99.99",
+    "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826",
+    "kind": "price_drop"
+   }
+  ],
+  "walmart_position": "was lowest 74 days ago",
+  "headline": {
+   "lead": "Web median price ",
+   "accent": "down 13%",
+   "tail": " over 90 days.",
+   "em": "Walmart held $119.99 the entire time — and is no longer the price anchor."
+  },
+  "method_note": "exact-product listings only (accessories and variants excluded), shipping-inclusive, used and refurbished excluded. Series built from 17 dated price observations across 6 merchants; each merchant line carries its last observed price forward."
+ },
+ "listings": {
+  "headline": {
+   "lead": "Walmart is ",
+   "accent": "not the lowest price."
+  },
+  "range": {
+   "low": 89.99,
+   "high": 119.99
+  },
+  "walmart_price": 119.99,
+  "ticks": [
+   {
+    "price": 89.99,
+    "labels": [
+     "NyzaStore"
+    ]
+   },
+   {
+    "price": 99.99,
+    "labels": [
+     "Target"
+    ]
+   },
+   {
+    "price": 109.99,
+    "labels": [
+     "Best Buy",
+     "Newegg"
+    ]
+   },
+   {
+    "price": 119.99,
+    "labels": [
+     "Amazon",
+     "McGuckin"
+    ]
+   }
+  ],
+  "chips": [
+   {
+    "kind": "price_dropped",
+    "text": "price_dropped · Target −$20 (Aug 29)",
+    "tone": "red"
+   },
+   {
+    "kind": "new_seller",
+    "text": "new_seller · NyzaStore (Aug 20)",
+    "tone": "amber"
+   },
+   {
+    "kind": "below_walmart",
+    "text": "below_walmart · NyzaStore −$30",
+    "tone": "red"
+   },
+   {
+    "kind": "competitor_oos",
+    "text": "competitor_oos · Best Buy (Aug 15) · opportunity",
+    "tone": "green"
+   }
+  ],
+  "rows": [
+   {
+    "merchant": "Amazon",
+    "price": 119.99,
+    "delta30": null,
+    "delta30_note": null,
+    "stock": "in stock",
+    "type": "exact",
+    "first_seen": null,
+    "url": "https://www.amazon.com/Ninja-AF101-Fryer-Black-gray/dp/B07FDJMC9Q",
+    "long_tail": false,
+    "seller": null
+   },
+   {
+    "merchant": "Target",
+    "price": 99.99,
+    "delta30": -20,
+    "delta30_note": null,
+    "stock": "in stock",
+    "type": "exact",
+    "first_seen": null,
+    "url": "https://www.target.com/p/ninja-4qt-air-fryer-black-af101/-/A-53649826",
+    "long_tail": false,
+    "seller": null
+   },
+   {
+    "merchant": "Best Buy",
+    "price": 109.99,
+    "delta30": null,
+    "delta30_note": null,
+    "stock": "OOS",
+    "type": "exact",
+    "first_seen": null,
+    "url": "https://www.bestbuy.com/product/ninja-air-fryer-black-gray/JXJVXGK9G5",
+    "long_tail": false,
+    "seller": null
+   },
+   {
+    "merchant": "Newegg",
+    "price": 109.99,
+    "delta30": null,
+    "delta30_note": null,
+    "stock": "in stock",
+    "type": "exact",
+    "first_seen": null,
+    "url": "https://www.newegg.com/ninja-af101-4-quart/p/N82E16896437034",
+    "long_tail": false,
+    "seller": null
+   },
+   {
+    "merchant": "McGuckin Hardware",
+    "price": 119.99,
+    "delta30": null,
+    "delta30_note": null,
+    "stock": "in stock",
+    "type": "exact",
+    "first_seen": "Mar 2026",
+    "url": "https://www.mcguckin.com/",
+    "long_tail": true,
+    "seller": null
+   },
+   {
+    "merchant": "NyzaStore",
+    "price": 89.99,
+    "delta30": null,
+    "delta30_note": "new Aug 20",
+    "stock": "in stock",
+    "type": "exact",
+    "first_seen": "Aug 20",
+    "url": "https://nyzastore.example.com/ninja-af101",
+    "long_tail": true,
+    "seller": null
+   }
+  ],
+  "n_merchants": 6,
+  "live_date": "2026-09-01",
+  "deep_scan": {
+   "available": true,
+   "status": "idle",
+   "note": "Exa Agent + Affiliate.com catalog (~2–3 min)"
+  }
+ },
+ "dupes": {
+  "primary": {
+   "id": "1967919184",
+   "url": "https://www.walmart.com/ip/Ninja-AF101-Air-Fryer-that-Crisps-Roasts-Reheats-Dehydrates-for-Quick-Easy-Meals-4-Quart-Capacity-High-Gloss-Finish-Black-Grey/1967919184",
+   "title": "Ninja AF101 Air Fryer that Crisps, Roasts, Reheats, & Dehydrates, 4 Quart"
+  },
+  "exact": [
+   {
+    "id": "516008834",
+    "url": "https://www.walmart.com/ip/Ninja-4-Quart-Digital-Air-Fryer-in-Black/516008834",
+    "title": "Ninja AF101 Air Fryer with 4-Quart Ceramic Coated Basket, Black Grey",
+    "kind": "exact",
+    "indexed": "2026-02-11",
+    "price": 104.99,
+    "seller": "marketplace seller"
+   }
+  ],
+  "other": [
+   {
+    "id": "5097712910",
+    "url": "https://www.walmart.com/ip/Restored-Ninja-4-Quart-Air-Fryer-AF101-Refurbished/5097712910",
+    "title": "Restored Ninja 4-Quart Air Fryer AF101 (Refurbished)",
+    "kind": "refurbished",
+    "indexed": null
+   },
+   {
+    "id": "2854332296",
+    "url": "https://www.walmart.com/ip/Ninja-AF100WM-Air-Fryer-Black-Gray-4-Qt/2854332296",
+    "title": "Ninja AF100WM Air Fryer, Black/Gray, 4 Qt",
+    "kind": "variant",
+    "indexed": "2025-08-23"
+   }
+  ],
+  "count_exact": 1,
+  "note": "walmart.com blocks crawlers, so price and review counts for sibling listings are not readable from the open web; listing identity comes from Exa’s index of walmart.com titles.",
+  "suggestion": "Consolidate listings or align pricing"
+ },
+ "recall": {
+  "verified": "2026-09-01",
+  "model_level": {
+   "status": "clear",
+   "headline": "No CPSC recall for the AF101 in the last 24 months.",
+   "items": []
+  },
+  "brand_family": [
+   {
+    "product": "SharkNinja Foodi OP300-series multi-function pressure cookers",
+    "date": "2025-05-01",
+    "hazard": "burn hazard — lid can open during use",
+    "units": "~1.8M units",
+    "url": "https://www.cpsc.gov/Recalls/2025/SharkNinja-Recalls-1-8-Million-Foodi-Multi-Function-Pressure-Cookers-Due-to-Burn-Hazard",
+    "why": "A sibling product, not this model."
+   }
+  ],
+  "complaint_scan": {
+   "count": 0,
+   "items": []
+  }
+ },
+ "cost": {
+  "calls": 17,
+  "dollars": 0.31
+ }
+}
