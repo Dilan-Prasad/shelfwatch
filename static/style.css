@@ -1,4 +1,4 @@
-/* Product Pulse — ported from the Claude Design file (design/product-pulse-v2.dc.html) */
+/* Shelfwatch — ported from the Claude Design file (design/product-pulse-v2.dc.html) */
 :root{
   --bg:#070A12;--panel:#0C1120;--panel2:#0F1626;--line:#1B2437;--line2:#161E30;--text:#EEF1F7;--muted:#A9B3C9;--dim:#6E7A94;--dimmer:#4F5B75;--faint:#3A4560;--dash:#2A3550;
   --blue:#1840ED;--blue2:#6F8BFF;--blue3:#2A3A6B;--red:#FF5A4E;--red2:#FF7A70;--amber:#F5B14A;--green:#3DD68C;--chip:#182238;--rule:rgba(111,139,255,.45);

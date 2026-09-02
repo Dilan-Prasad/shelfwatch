@@ -1,4 +1,4 @@
-# Product Pulse — backend/frontend contract
+# Shelfwatch — backend/frontend contract
 
 Backend: FastAPI (`app.py`), port 8020. Frontend: `static/index.html` (+ `static/app.js`, `static/style.css`), vanilla JS, no build step.
 Design source of truth: `design/product-pulse-v2.dc.html` (Claude Design export). The frontend must reproduce its three screens
@@ -38,7 +38,7 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
                "accent": "basket coating wear." },                   // red part (may be "")
 
   "board": [  // exactly 5, in order; drives the Signal board cards and the "N act now · N watch · N clear" legend
-    { "key":"sentiment", "num":"01", "title":"Sentiment Pulse", "status":"act|watch|clear|thin",
+    { "key":"sentiment", "num":"01", "title":"Sentiment Watch", "status":"act|watch|clear|thin",
       "line1":"0.72 · −0.04 / 30d", "line1_color":"grey|amber|red|green", "line2":"1 pain cluster rising +40%", "line2_color":"red" },
     { "key":"price", … "title":"Price History" }, { "key":"listings", … "title":"Listing Radar" },
     { "key":"dupes", … "title":"Internal Dupes" }, { "key":"recall", … "title":"Recall & Safety" }
@@ -120,7 +120,7 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
 ```
 
 ## Frontend behaviours (from the design)
-- Intake: hero, URL input (Enter submits), "Check the pulse →", amber error line, preset pills from `/api/presets` (click fills the input), footer strip.
+- Intake: hero, URL input (Enter submits), "Watch the shelf →", amber error line, preset pills from `/api/presets` (click fills the input), footer strip.
 - Generating: thin progress bar at top (advance by stage: resolve 25% → surfaces 25→80% → count 90% → report 100%), "01 · resolving entity" card (name, then `short · WMT:<id>`, alias pills with support, "✓ entity resolved · N web aliases matched"), "02 · scanning surfaces" list driven by `surface` events (queued grey / scanning pulsing blue dot / done ✓ / thin / indirect / degraded), then the big animated count with caption. "skip to report →" bottom-right is enabled once the `report` event has arrived. Auto-advance to Report ~1.5 s after the count animation ends.
 - Report: sticky bar (name short · WMT id, as_of pill, "external web only", "New report"); header with product name + walmart link + three pills + the verdict sentence; signal board (5 cards, statuses, legend counts computed from statuses); sections 01–05 exactly as designed but data-driven; price chart in SVG with band/low/high/median/merchant step lines/Walmart line (only if `price.walmart`)/event markers/hover tooltip/merchant toggles; listing radar bar + chips + table with real "open ↗" links; dupes grid; recall cards; footer.
 - Every "source ↗ / open ↗ / View all N ↗" is a real link (target=_blank rel=noopener). "View all N" expands the cluster's evidence list inline.

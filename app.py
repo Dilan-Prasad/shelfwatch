@@ -1,6 +1,6 @@
 """
-Product Pulse — paste a walmart.com product URL, get one report built from the
-open web via Exa: sentiment pulse, price history, listing radar, internal
+Shelfwatch — paste a walmart.com product URL, get one report built from the
+open web via Exa: sentiment watch, price history, listing radar, internal
 dupes, recall & safety.
 
 Exa endpoints used
@@ -1829,7 +1829,7 @@ class Pulse:
         for c in clusters:
             if c["title"] == "safety":
                 c["title"] = "safety concerns"
-        board.append({"key": "sentiment", "num": "01", "title": "Sentiment Pulse", "status": st,
+        board.append({"key": "sentiment", "num": "01", "title": "Sentiment Watch", "status": st,
                       "line1": (f"{score:.2f} · {delta:+.2f} / 30d" if score is not None and delta is not None else f"{score:.2f} · trend n/a" if score is not None else "score — · thin data"),
                       "line1_color": "red" if delta is not None and delta <= -0.05 else "amber" if delta is not None and delta <= -0.03 else "grey",
                       "line2": (f"{n_rising} pain cluster{'s' if n_rising != 1 else ''} rising" + (f" +{top['trend_pct']}%" if top and top["trend"] == "rising" and top["trend_pct"] else "")) if n_rising
@@ -2010,7 +2010,7 @@ def client_ip(request):
 
 # ---------------------------------------------------------------- app
 
-app = FastAPI(title="Product Pulse")
+app = FastAPI(title="Shelfwatch")
 
 
 @app.get("/")

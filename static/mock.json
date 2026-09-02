@@ -92,7 +92,7 @@
   {
    "key": "sentiment",
    "num": "01",
-   "title": "Sentiment Pulse",
+   "title": "Sentiment Watch",
    "status": "watch",
    "line1": "0.72 · −0.04 / 30d",
    "line1_color": "amber",

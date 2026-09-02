@@ -1,9 +1,9 @@
-# Product Pulse
+# Shelfwatch
 
 **Paste one walmart.com product URL. Get one report from the open web — sentiment, price history,
 live listings, internal dupes, recall status — every number traceable to a dated, clickable source.**
 
-Live demo: **[pulse.salua.ai](https://pulse.salua.ai)** · built for the Exa work trial (Walmart track) ·
+Live demo: **[shelfwatch.salua.ai](https://shelfwatch.salua.ai)** · built for the Exa work trial (Walmart track) ·
 design: Claude Design → `design/product-pulse-v2.dc.html`
 
 ---
@@ -12,13 +12,13 @@ design: Claude Design → `design/product-pulse-v2.dc.html`
 
 ```
 input:   https://www.walmart.com/ip/<anything>/<item id>      (any Walmart product URL, slug optional)
-output:  a five-section pulse report, streamed while it is built (~30 s, ~$0.82 of Exa credits, 28 calls)
+output:  a five-section Shelfwatch report, streamed while it is built (~30 s, ~$0.82 of Exa credits, 28 calls)
 ```
 
 | # | Section | Question it answers | Exa work behind it |
 |---|---|---|---|
 | 00 | Entity resolution | Which product is this, and what does the web call it? | `/answer` + `outputSchema` (brand, model, UPC, category, aliases) cross-checked against Exa's index of walmart.com titles. Alias *support* = share of retrieved listings whose title matches the alias. |
-| 01 | Sentiment Pulse | How do people actually feel about it? | Non-social open web only, 12-month window, five surfaces in parallel: **retail review pages** (15 Amazon / Target / Best Buy / Home Depot… pages, schema-extracted complaints and praises, walmart.com excluded), **owner & expert reviews** (neural + a 50-result keyword pass + a complaints pass, big-box and video domains excluded), **forums & communities** (`includeDomains`: Quora, Slickdeals, RedFlagDeals, Eurobricks, StackExchange, hobby forums…), **news** (`category: news`, 30 results) and **Reddit as quoted by third parties** (`/answer` with a quote schema, plus RedditRecs). Each `/search` carries `highlights` + a schema `summary` that labels sentiment, whether a complaint is actually voiced, its category, a verbatim quote, and a safety flag. Social platforms (Reddit, TikTok, YouTube) are not crawled — Exa is blocked there, so they are left out rather than shown as thin. |
+| 01 | Sentiment Watch | How do people actually feel about it? | Non-social open web only, 12-month window, five surfaces in parallel: **retail review pages** (15 Amazon / Target / Best Buy / Home Depot… pages, schema-extracted complaints and praises, walmart.com excluded), **owner & expert reviews** (neural + a 50-result keyword pass + a complaints pass, big-box and video domains excluded), **forums & communities** (`includeDomains`: Quora, Slickdeals, RedFlagDeals, Eurobricks, StackExchange, hobby forums…), **news** (`category: news`, 30 results) and **Reddit as quoted by third parties** (`/answer` with a quote schema, plus RedditRecs). Each `/search` carries `highlights` + a schema `summary` that labels sentiment, whether a complaint is actually voiced, its category, a verbatim quote, and a safety flag. Social platforms (Reddit, TikTok, YouTube) are not crawled — Exa is blocked there, so they are left out rather than shown as thin. |
 | 02 | Price History | Is it getting cheaper or pricier across the web? | 12 months of dated price observations from four deal/sale/price-drop query variants, news deal coverage, merchant listings, `/answer` (dated observations with source URLs) and tracker sites (camelcamelcamel, pricehistory.app, brickeconomy…), carried forward per merchant into a low/median/high band. Trend is only reported for merchants tracked ≥30 days (a median that "moves" because coverage grew is not a trend). |
 | 03 | Listing Radar | Who sells this exact product right now, and where does Walmart stand? | Two layers. **Indexed**: big-box `includeDomains` + a long-tail sweep + an exact-keyword pass, each listing classified exact / variant / accessory / refurbished by a schema summary (these prices come from Exa's copy of the page and can lag a sale — they are labelled *indexed*). **Live**: an Exa Agent run over the Affiliate.com catalog (Exa Connect) returns the price a customer pays right now (sale price + list price), stock, and walmart.com's own listings; it starts automatically after each live report (~1–3 min) and is merged server-side into the cached report — rows are labelled ● live, sales get a "was → now" chip, and Walmart's price feeds sections 02–04. Big retailers (Best Buy, Home Depot, dyson.com…) block live crawling, which is why the catalog feed, not a crawl, is the live source. |
 | 04 | Internal Dupes | Is Walmart selling this product against itself? | Exa's index of walmart.com titles (`includeDomains: walmart.com`), classified against the primary listing: exact sibling pages vs variants, refurbished and accessories. Sibling listings confirmed by the Affiliate.com catalog carry a live price and seller (✓); review counts are not readable from the open web because walmart.com blocks crawlers. |
@@ -51,7 +51,7 @@ python3 app.py                # → http://localhost:8020
 `QUOTE_KEYS=1` (in `.env`) wraps the product key in quotes for the neural review, community, news and long-tail passes and the
 big-box keyword pass — Exa's exact-phrase matching, measured in `tools/quotes_test.py` (Dyson V8 Cyclone review pass: 14 → 19
 exact hits of 20, sibling models 1 → 0). Left plain on purpose: the deal-post pass (no gain) and the walmart.com family pass
-(quotes only cut recall). Enabled on pulse.salua.ai.
+(quotes only cut recall). Enabled on shelfwatch.salua.ai.
 
 `presets.json` holds up to three demo presets (label + URL). Reports are cached per item id for 24 h
 (`cache/<id>.json`); `?url=…&auto=cached` replays a cached report with zero API calls, `&auto=live` forces a run.
@@ -60,11 +60,11 @@ exact hits of 20, sibling models 1 → 0). Left plain on purpose: the deal-post 
 Public-deployment spend guard: live reports are rate-limited per IP and globally (`LIVE_RUNS_PER_HOUR`,
 `LIVE_RUNS_PER_IP_PER_HOUR`), deep scans separately (`DEEP_SCANS_PER_HOUR`); cached replays are free.
 
-## Deploying (how pulse.salua.ai runs)
+## Deploying (how shelfwatch.salua.ai runs)
 
-Route 53 `A pulse.salua.ai → EC2` (created with the AWS CLI), `deploy/product-pulse.service` (systemd, uvicorn on
-127.0.0.1:8020), `deploy/nginx-pulse.salua.ai.conf` (reverse proxy, SSE buffering off) and
-`certbot --nginx -d pulse.salua.ai`. Install commands are in each file's header.
+Route 53 `A shelfwatch.salua.ai → EC2` (created with the AWS CLI), `deploy/shelfwatch.service` (systemd, uvicorn on
+127.0.0.1:8020), `deploy/nginx-shelfwatch.salua.ai.conf` (reverse proxy, SSE buffering off) and
+`certbot --nginx -d shelfwatch.salua.ai`; `pulse.salua.ai` redirects here. Install commands are in each file's header.
 
 ## Layout
 

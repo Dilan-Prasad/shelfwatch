@@ -1,4 +1,4 @@
-/* Product Pulse — frontend. Vanilla JS, no build step.
+/* Shelfwatch — frontend. Vanilla JS, no build step.
    Screens: intake → generating (SSE-driven) → report (data-driven from the report JSON, see ../CONTRACT.md). */
 'use strict';
 (() => {
@@ -49,22 +49,22 @@ function viewIntake() {
   return `
 <div class="intake">
   <div class="topbar">
-    <div class="brand"><span class="brand-dot"></span><span class="brand-name">Product Pulse</span><span class="brand-tag">demo</span></div>
+    <div class="brand"><span class="brand-dot"></span><span class="brand-name">Shelfwatch</span><span class="brand-tag">demo</span></div>
     <div class="topbar-right">powered by Exa · external web only</div>
   </div>
   <div class="hero">
-    <div class="eyebrow blue">Pulse report · one walmart.com product URL</div>
-    <h1>Every product has a <span class="accent">pulse.</span></h1>
-    <p class="lede">Paste a walmart.com product URL. Product Pulse reads the open web — retail review pages, owner &amp; expert reviews, forums, news, CPSC, and Reddit as quoted by third parties — and returns one report: sentiment, price history, live listings, internal dupes, recall status.</p>
+    <div class="eyebrow blue">Shelfwatch report · one walmart.com product URL</div>
+    <h1>Every shelf has a <span class="accent">signal.</span></h1>
+    <p class="lede">Paste a walmart.com product URL. Shelfwatch reads the open web — retail review pages, owner &amp; expert reviews, forums, news, CPSC, and Reddit as quoted by third parties — and returns one report: sentiment, price history, live listings, internal dupes, recall status.</p>
     <div class="urlbar">
       <input id="url" type="url" spellcheck="false" autocomplete="off" placeholder="https://www.walmart.com/ip/…" value="${attr(S.url)}">
-      <button class="btn-primary" data-action="submit">Check the pulse →</button>
+      <button class="btn-primary" data-action="submit">Watch the shelf →</button>
     </div>
     <div class="errline" id="errline">${S.error ? `<div class="err"><span class="dot"></span><span>${esc(S.error)}</span></div>` : ''}</div>
     <div class="presets"><span class="presets-label">demo presets</span>${slots}</div>
   </div>
   <div class="intake-foot">
-    <span>sentiment pulse · historical price · listing radar · internal dupes · recall &amp; safety</span>
+    <span>sentiment watch · historical price · listing radar · internal dupes · recall &amp; safety</span>
     <span>walmart.com excluded from sentiment · social platforms not scraped</span>
   </div>
 </div>`;
@@ -101,7 +101,7 @@ function viewGenerating() {
 <div class="gen">
   <div class="progress" id="g-progress" style="width:${g.progress}%"></div>
   <div class="gen-top">
-    <div class="brand"><span class="brand-dot pulse"></span><span class="brand-name">Product Pulse</span></div>
+    <div class="brand"><span class="brand-dot pulse"></span><span class="brand-name">Shelfwatch</span></div>
     <div class="topbar-right">generating · external web only</div>
   </div>
   <div class="gen-body" id="g-body">
@@ -154,7 +154,7 @@ function sticky(r) {
   const p = r.product || {};
   return `
   <div class="sticky"><div class="sticky-in">
-    <div class="brand"><span class="brand-dot small"></span><span class="brand-name s20">Product Pulse</span><span class="brand-sub">${esc(p.short || p.name || '')} · WMT:${esc(r.id || '')}</span></div>
+    <div class="brand"><span class="brand-dot small"></span><span class="brand-name s20">Shelfwatch</span><span class="brand-sub">${esc(p.short || p.name || '')} · WMT:${esc(r.id || '')}</span></div>
     <div class="row8">
       <span class="pill-meta">as_of ${fmtAsOf(r.as_of)}</span>
       <span class="pill-meta">external web only</span>
@@ -170,7 +170,7 @@ function secHeader(r) {
   <section class="wrap rhead-sec rise">
     <div class="rhead">
       <div>
-        <div class="eyebrow">Pulse report · ${esc(p.short || '')}</div>
+        <div class="eyebrow">Shelfwatch report · ${esc(p.short || '')}</div>
         <h1>${esc(p.name || 'Unresolved product')}</h1>
         ${link(r.url, esc(shortUrl) + ' ↗', 'wm-link')}
       </div>
@@ -234,7 +234,7 @@ function evidenceList(c, rank) {
 function secSentiment(r) {
   const s = r.sentiment || {}, m = r.mentions || {}, clusters = s.clusters || [], praises = s.praises || [];
   const asof = fmtAsOf(r.as_of);
-  const head = secHead('01', 'Sentiment Pulse', 'How do people actually feel about this product?', `as_of ${asof}<br>reviews · forums · news · walmart.com excluded`);
+  const head = secHead('01', 'Sentiment Watch', 'How do people actually feel about this product?', `as_of ${asof}<br>reviews · forums · news · walmart.com excluded`);
   const d = s.delta30;
   const dchip = d == null ? `<span class="chip chip-grey">n/a · 30d</span>` : `<span class="chip ${d < -0.005 ? 'chip-amber' : d > 0.005 ? 'chip-green' : 'chip-grey'}">${sign(d)}${Math.abs(d).toFixed(2)} · 30d</span>`;
   const v = m.velocity_pct;
@@ -584,7 +584,7 @@ function secRecall(r) {
 }
 function footer(r) {
   const c = r.cost || {};
-  return `<footer class="rfoot rise d7"><span>Product Pulse · demo · collected via Exa${c.calls != null ? ` · ${num(c.calls)} API calls` : ''}${c.dollars != null ? ` · $${Number(c.dollars).toFixed(2)}` : ''}</span><span>as_of ${fmtAsOf(r.as_of)} · external web only · walmart.com excluded from sentiment</span></footer>`;
+  return `<footer class="rfoot rise d7"><span>Shelfwatch · demo · collected via Exa${c.calls != null ? ` · ${num(c.calls)} API calls` : ''}${c.dollars != null ? ` · $${Number(c.dollars).toFixed(2)}` : ''}</span><span>as_of ${fmtAsOf(r.as_of)} · external web only · walmart.com excluded from sentiment</span></footer>`;
 }
 function mountReport(r) {
   const P = r.price;
@@ -678,10 +678,10 @@ function startRun(url, mode) {
   es.addEventListener('call', e => { const d = parse(e); if (d && S.gen) S.gen.calls.push(d); });
   es.addEventListener('report', e => { const d = parse(e); es.close(); S.es = null; if (d) onReport(d); else fail({ message: 'The report could not be read. Try again.', code: 'upstream' }); });
   es.addEventListener('error', e => {
-    if (e && typeof e.data === 'string') { const d = parse(e) || { message: 'The pulse service returned an error.' }; es.close(); S.es = null; fail(d); return; }
+    if (e && typeof e.data === 'string') { const d = parse(e) || { message: 'The Shelfwatch service returned an error.' }; es.close(); S.es = null; fail(d); return; }
     if (S.gen && S.gen.report) return;                      // stream ended after the report — nothing to do
     if (es.readyState === EventSource.CONNECTING) return;    // transient reconnect; the server will resume or end the stream
-    es.close(); S.es = null; fail({ message: 'Connection to the pulse service was lost. Try again.', code: 'upstream' });
+    es.close(); S.es = null; fail({ message: 'Connection to the Shelfwatch service was lost. Try again.', code: 'upstream' });
   });
 }
 function fail(d) {
