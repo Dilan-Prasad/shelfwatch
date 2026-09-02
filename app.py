@@ -58,6 +58,10 @@ LIVE_RUNS_PER_IP_PER_HOUR = int(os.environ.get("LIVE_RUNS_PER_IP_PER_HOUR", "6")
 MAX_CONCURRENT_RUNS = 4
 DEEP_SCANS_PER_HOUR = int(os.environ.get("DEEP_SCANS_PER_HOUR", "6"))
 CACHE_TTL_HOURS = float(os.environ.get("CACHE_TTL_HOURS", "24"))
+# Exa is testing exact-phrase matching for "quoted" terms. Measured 2026-09-02 (tools/quotes_test.py): quoting the product key in
+# neural review/news passes raised exact hits (Dyson V8 Cyclone: 14 -> 19 of 20, siblings 1 -> 0); inside big-box domain filters
+# quoted neural returned MORE sibling pages (3 -> 8) while quoted keyword was best; for the walmart.com family pass quotes only cut recall.
+QUOTE_KEYS = os.environ.get("QUOTE_KEYS", "0") == "1"
 
 _run_log: deque = deque()
 _run_log_by_ip: dict = {}
@@ -690,6 +694,9 @@ class Pulse:
                 self.product["aliases"] = self.product["aliases"][:3]
         self.model_in_listing = model_in_listing
         self.q_full = self.q if (category and all(contains_word(self.q, t) for t in tokens(category))) else f"{self.q} {category}".strip()
+        # quoted forms for passes where exact-phrase matching measured better (neural reviews / news / long tail); inert unless QUOTE_KEYS=1
+        self.qq = f'"{self.q}"' if QUOTE_KEYS else self.q
+        self.qq_full = (f'"{self.q}" {category}'.strip() if (QUOTE_KEYS and category and not all(contains_word(self.q, t) for t in tokens(category))) else (self.qq if QUOTE_KEYS else self.q_full))
         size_in_q = bool(size) and re.sub(r"[\s-]", "", size.lower()) in re.sub(r"[\s-]", "", self.q.lower())
         self.product["short"] = short if model_in_listing or not model else (self.q if (size == "" or size_in_q) else f"{self.q} ({size})")
         self.product["label"] = model if model_in_listing else self.q
@@ -858,7 +865,7 @@ class Pulse:
 
     async def scan_news(self):
         await self.surface("news", "scanning")
-        res = await self.exa.search("news", f"{self.q_full}", numResults=30, category="news", excludeDomains=["walmart.com"],
+        res = await self.exa.search("news", f"{self.qq_full}", numResults=30, category="news", excludeDomains=["walmart.com"],
                                     startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents())
         ms = self._keep_mentions(res, "news")
         self.mentions.extend(ms)
@@ -868,13 +875,13 @@ class Pulse:
         await self.surface("reviews", "scanning")
         await self.surface("forums", "scanning")
         r1, r2, r3, r4 = await asyncio.gather(
-            self.exa.search("forums:experience", f"{self.q_full} owner experience review after using it", numResults=30,
+            self.exa.search("forums:experience", f"{self.qq_full} owner experience review after using it", numResults=30,
                             excludeDomains=SENTIMENT_EXCLUDE, startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
-            self.exa.search("forums:problems", f"{self.q} problems complaints issues", numResults=20,
+            self.exa.search("forums:problems", f"{self.qq} problems complaints issues", numResults=20,
                             excludeDomains=SENTIMENT_EXCLUDE, startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
             self.exa.search("forums:keyword", f"{self.q} review", type="keyword", numResults=50,
                             excludeDomains=SENTIMENT_EXCLUDE, startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents()),
-            self.exa.search("forums:communities", f"{self.q_full} opinion", numResults=30, includeDomains=FORUM_DOMAINS, contents=self._sent_contents()),
+            self.exa.search("forums:communities", f"{self.qq_full} opinion", numResults=30, includeDomains=FORUM_DOMAINS, contents=self._sent_contents()),
         )
         seen = set()
         ms_rev, ms_for = [], []
@@ -1162,9 +1169,9 @@ class Pulse:
         big = list(BIG_BOX.keys())
         r1, r2, r3 = await asyncio.gather(
             self.exa.search("listings:bigbox", f"{self.q_full} buy", numResults=20, includeDomains=big, contents=self._listing_contents(), timeout=70.0),
-            self.exa.search("listings:longtail", f"buy {self.q_full} online store", numResults=15,
+            self.exa.search("listings:longtail", f"buy {self.qq_full} online store", numResults=15,
                             excludeDomains=sorted(set(big) | NON_MERCHANT), contents=self._listing_contents(), timeout=70.0),
-            self.exa.search("listings:keyword", f"{self.q}", type="keyword", numResults=15, includeDomains=big, contents=self._listing_contents(), timeout=70.0),
+            self.exa.search("listings:keyword", f"{self.qq}", type="keyword", numResults=15, includeDomains=big, contents=self._listing_contents(), timeout=70.0),
         )
         seen = set()
         for tag, rs in (("bigbox", r1), ("longtail", r2), ("keyword", r3)):
