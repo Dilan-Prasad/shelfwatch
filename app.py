@@ -55,7 +55,7 @@ SPARK_DAYS = 90            # sentiment sparkline window
 # public-deployment spend guard (a live report costs ~$0.30-0.45 in Exa credits)
 LIVE_RUNS_PER_HOUR = int(os.environ.get("LIVE_RUNS_PER_HOUR", "24"))
 LIVE_RUNS_PER_IP_PER_HOUR = int(os.environ.get("LIVE_RUNS_PER_IP_PER_HOUR", "6"))
-MAX_CONCURRENT_RUNS = 3
+MAX_CONCURRENT_RUNS = 4
 DEEP_SCANS_PER_HOUR = int(os.environ.get("DEEP_SCANS_PER_HOUR", "6"))
 CACHE_TTL_HOURS = float(os.environ.get("CACHE_TTL_HOURS", "24"))
 
@@ -486,7 +486,11 @@ NON_MERCHANT = {"walmart.com", "youtube.com", "tiktok.com", "reddit.com", "ebay.
                 "woot.com", "home.woot.com", "ubuy.com", "desertcart.com", "fruugo.com", "bonanza.com", "onbuy.com", "johnlewis.com", "ao.com",
                 "currys.com", "argos.com", "fnac.com", "darty.com", "bol.com", "mediamarkt.com", "jbhifi.com", "harveynorman.com", "kogan.com",
                 "catch.com", "noon.com", "jumia.com", "flipkart.com", "shopee.com", "lazada.com", "ozon.com", "mercadolibre.com", "kiut.com",
-                "dhgate.com", "banggood.com", "gearbest.com", "lightinthebox.com", "joom.com", "cdiscount.com", "otto.com", "zalando.com", "bricksworld.com"}
+                "dhgate.com", "banggood.com", "gearbest.com", "lightinthebox.com", "joom.com", "cdiscount.com", "otto.com", "zalando.com", "bricksworld.com",
+                "backmarket.com", "swappa.com", "gazelle.com", "decluttr.com", "reebelo.com", "very.co.uk", "very.com", "zavvi.com", "zavvi.us",
+                "pricehistory.app", "priceintime.com", "pricepirates.com", "themanual.com", "needforthis.com", "kitchenwarecompare.com",
+                "brickranker.com", "brickver.com", "brickinsights.com", "brickeconomy.com", "brickset.com", "bricklink.com", "brickowl.com", "rebrickable.com",
+                "brickfanatics.com", "jaysbrickblog.com", "newelementary.com", "brothers-brick.com", "legoland.com"}
 SENTIMENT_EXCLUDE = sorted(set(list(BIG_BOX.keys()) + ["walmart.com", "youtube.com", "tiktok.com", "reddit.com", "cpsc.gov", "ebay.com",
                                                       "manualslib.com", "manualslib.tech", "camelcamelcamel.com", "upcitemdb.com", "upczilla.com",
                                                       "aliexpress.com", "temu.com", "pinterest.com", "facebook.com", "instagram.com"]))
@@ -498,6 +502,21 @@ FORUM_DOMAINS = ["quora.com", "forums.redflagdeals.com", "slickdeals.net", "hard
                  "bogleheads.org", "stackexchange.com", "candlepowerforums.com", "rcgroups.com", "dogforums.com", "dogforum.com", "thedogforum.com"]
 TRACKER_DOMAINS = ["camelcamelcamel.com", "pricepulse.app", "keepa.com", "pricespy.com", "shopsavvy.com", "brickeconomy.com", "brickset.com", "price.com",
                    "pricegrabber.com", "honey.com", "pricehistory.app", "priceintime.com", "klarna.com"]
+REPUTABLE_HOSTS = {"consumerreports.org", "topclassactions.com", "aboutlawsuits.com", "classaction.org", "reuters.com", "apnews.com", "cnn.com", "nbcnews.com",
+                   "cbsnews.com", "abcnews.go.com", "usatoday.com", "nytimes.com", "washingtonpost.com", "wsj.com", "foxnews.com", "people.com", "today.com",
+                   "theverge.com", "cnet.com", "npr.org", "bloomberg.com", "cnbc.com", "forbes.com", "businessinsider.com", "macrumors.com", "9to5mac.com",
+                   "engadget.com", "arstechnica.com", "thehill.com", "axios.com", "law360.com", "jdsupra.com", "lawyersandsettlements.com", "kitchenaid.com"}
+DEAL_NEWS_HOSTS = {"slickdeals.net", "dealnews.com", "bensbargains.com", "bradsdeals.com", "techbargains.com", "9to5toys.com", "dealcatcher.com", "gottadeal.com",
+                   "pepperdeals.com", "pzdeals.com", "dealmoon.com", "thekrazycouponlady.com", "hip2save.com", "clarkdeals.com", "dealsplus.com", "cnet.com", "tomsguide.com",
+                   "pcmag.com", "theverge.com", "engadget.com", "people.com", "bestproducts.com", "allrecipes.com", "foodandwine.com", "syracuse.com", "pennlive.com",
+                   "kansascity.com", "nj.com", "oregonlive.com", "al.com", "mlive.com", "cleveland.com", "masslive.com", "nypost.com", "usatoday.com", "forbes.com",
+                   "cnn.com", "today.com", "goodhousekeeping.com", "thespruce.com", "kinja.com", "rtings.com", "wirecutter.com", "nytimes.com", "cashbackgoat.com",
+                   "brickfanatics.com", "jaysbrickblog.com", "thebrickfan.com", "brickset.com", "macrumors.com", "9to5mac.com", "appleinsider.com", "reviewed.com",
+                   "seriouseats.com", "thekitchn.com", "simplyrecipes.com", "delish.com", "tasteofhome.com", "housebeautiful.com", "realsimple.com", "bhg.com",
+                   "themanual.com", "digitaltrends.com", "bgr.com", "gizmodo.com", "lifehacker.com", "mashable.com", "zdnet.com", "techradar.com", "t3.com", "ign.com",
+                   "polygon.com", "kotaku.com", "marketwatch.com", "businessinsider.com", "apartmenttherapy.com", "foodnetwork.com", "eater.com", "bonappetit.com",
+                   "southernliving.com", "marthastewart.com", "popsugar.com", "buzzfeed.com", "huffpost.com", "yahoo.com", "msn.com", "aol.com", "newsweek.com",
+                   "needforthis.com", "kitchenwarecompare.com", "homeapplianceowl.com", "top10scout.com", "pricehistory.app", "camelcamelcamel.com", "brickeconomy.com"}
 SAFETY_DOMAINS = ["saferproducts.gov", "recalls.gov", "fda.gov", "nhtsa.gov", "usda.gov", "consumerreports.org", "classaction.org", "topclassactions.com"]
 
 MERCHANT_COLORS = ["oklch(74% 0.12 250)", "oklch(74% 0.12 300)", "oklch(74% 0.12 215)", "oklch(74% 0.12 275)",
@@ -509,7 +528,7 @@ PAIN_WORDS = {
     "durability": r"broke|break|stopp?ed working|died|dead|fail|peel|flak|wear|crack|rust|chip|fell apart|defect|malfunction|warranty|last(ed)? only",
     "size_fit": r"\bsmall|too big|bulky|capacity|\bsize|\bfits?\b|\bfitting\b|tight|heavy|\blarge|\bspace",
     "cleaning": r"clean|dishwasher|stain|residue|sticky|greas",
-    "performance": r"uneven|undercook|overcook|slow|weak|doesn.t (heat|cook|work)|inconsistent|burn(t|ed)? food|soggy|not crispy|lag|glitch|poor (quality|performance)|drop(s|ped)? connection",
+    "performance": r"uneven|undercook|overcook|slow (to|cook|heat|charg|perform|preheat|start)|too slow|sluggish|weak|doesn.t (heat|cook|work)|inconsistent|burn(t|ed)? food|soggy|not crispy|\blag|glitch|poor (quality|performance)|drop(s|ped)? connection",
     "smell_fumes": r"smell|odor|odour|fume|plastic smell|chemical",
     "safety": r"fire|smoke|spark|shock|melt|burn hazard|caught fire|injur|choking|toxic|overheat",
     "price_value": r"price|expensive|overpriced|value|cost|cheap(ly)? made|not worth",
@@ -579,8 +598,8 @@ class Pulse:
         await self.emit_raw("call", {k: v for k, v in e.items() if k != "type"})
 
     async def surface(self, key, status, n=0, note=""):
-        label = {"reddit": "reddit", "youtube": "youtube", "tiktok": "tiktok", "news": "news", "forums": "forums & blogs",
-                 "retail": "retail reviews", "cpsc": "cpsc"}.get(key, key)
+        label = {"retail": "retail reviews", "reviews": "owner & expert reviews", "forums": "forums & communities", "news": "news",
+                 "reddit": "reddit · quoted", "cpsc": "cpsc & safety news"}.get(key, key)
         self.surfaces[key] = {"key": key, "label": label, "status": status, "n": n, "note": note}
         await self.emit_raw("surface", self.surfaces[key])
 
@@ -834,13 +853,14 @@ class Pulse:
 
     async def scan_news(self):
         await self.surface("news", "scanning")
-        res = await self.exa.search("news", f"{self.q_full}", numResults=30, category="news",
+        res = await self.exa.search("news", f"{self.q_full}", numResults=30, category="news", excludeDomains=["walmart.com"],
                                     startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=self._sent_contents())
         ms = self._keep_mentions(res, "news")
         self.mentions.extend(ms)
         await self.surface("news", "done" if len(ms) >= 2 else "thin", len(ms), "" if len(ms) >= 2 else "no dated news coverage names this model")
 
     async def scan_forums(self):
+        await self.surface("reviews", "scanning")
         await self.surface("forums", "scanning")
         r1, r2, r3, r4 = await asyncio.gather(
             self.exa.search("forums:experience", f"{self.q_full} owner experience review after using it", numResults=30,
@@ -852,14 +872,20 @@ class Pulse:
             self.exa.search("forums:communities", f"{self.q_full} opinion", numResults=30, includeDomains=FORUM_DOMAINS, contents=self._sent_contents()),
         )
         seen = set()
-        ms = []
-        for r in list(r1) + list(r2) + list(r3) + list(r4):
+        ms_rev, ms_for = [], []
+        for r in list(r1) + list(r2) + list(r3):
             if r.get("url") in seen:
                 continue
             seen.add(r.get("url"))
-            ms.extend(self._keep_mentions([r], "forums"))
-        self.mentions.extend(ms)
-        await self.surface("forums", "done" if len(ms) >= 3 else "thin", len(ms), "" if len(ms) >= 3 else "few forum or blog posts in the window")
+            ms_rev.extend(self._keep_mentions([r], "reviews"))
+        for r in r4:
+            if r.get("url") in seen:
+                continue
+            seen.add(r.get("url"))
+            ms_for.extend(self._keep_mentions([r], "forums"))
+        self.mentions.extend(ms_rev + ms_for)
+        await self.surface("reviews", "done" if len(ms_rev) >= 3 else "thin", len(ms_rev), "review sites & blogs · 12 months" if len(ms_rev) >= 3 else "few review posts name this model")
+        await self.surface("forums", "done" if len(ms_for) >= 3 else "thin", len(ms_for), "Quora, Slickdeals, RedFlagDeals, hobby forums…" if len(ms_for) >= 3 else "few community threads name this model")
 
     REDDIT_SCHEMA = {"type": "object", "properties": {"quotes": {"type": "array", "items": {"type": "object", "properties": {
         "text": {"type": "string"}, "sentiment": {"type": "string", "enum": ["positive", "negative", "mixed"]}, "url": {"type": "string"},
@@ -911,7 +937,7 @@ class Pulse:
                                                                     f"star rating, review count, complaints customers voice, praises customers voice. Only what customers actually say."),
                                                           "schema": RETAIL_SCHEMA}})
         n = 0
-        junk = re.compile(r"not (available|specified|determined|included|present|listed|provided|found|shown)|cannot be|no (explicit|specific|clear|customer)|provided (text|excerpt|page)|\bn/a\b|customers voice|reviews section|page text|nothing specific|beyond general|remains high|overall (good|positive|high|quality)|no complaints|none (reported|mentioned)", re.I)
+        junk = re.compile(r"\(implied\)|implied|\?\s*$|not (available|specified|determined|included|present|listed|provided|found|shown|stated|explicit)|cannot be|no (explicit|specific|clear|customer)|provided (text|excerpt|page)|\bn/a\b|customers voice|reviews section|page text|nothing specific|beyond general|remains high|overall (good|positive|high|quality)|no complaints|none (reported|mentioned)", re.I)
         neg_cue = re.compile("|".join(PAIN_WORDS.values()) + r"|\bnot\b|hard|difficult|hate|poor|bad|issue|problem|disappoint|complain|wish|lack|only\b", re.I)
         pos_cue = re.compile("|".join(p for _, p in PRAISE_WORDS) + r"|love|great|good|excellent|recommend|perfect|works well|happy|pleased", re.I)
         by_merchant = {}
@@ -926,7 +952,9 @@ class Pulse:
             comps = [norm(c) for c in (s.get("complaints") or []) if isinstance(c, str) and norm(c)]
             prs = [norm(c) for c in (s.get("praises") or []) if isinstance(c, str) and norm(c)]
             spec = re.compile(r"\d+\s?(°|degrees|watts?|w\b|qt\b|quart|lbs?\b|oz\b|ml\b|inch|in\b)|^[A-Z][\w -]{2,30}:\s", re.I)
-            comps = [c for c in comps if not junk.search(c) and neg_cue.search(c) and not spec.search(c) and 8 <= len(c) <= 160][:4]
+            praise_like = re.compile(r"\b(love|great|excellent|perfect|fast and easy|easy to|works well|keeps .* cold|highly recommend|no (issue|problem|complaint)s?)\b", re.I)
+            neg_strict = re.compile(r"\bnot\b|n't|\bno\b|hard|difficult|hate|poor|bad|issue|problem|disappoint|complain|wish|lack|broke|break|stopp|fail|loud|noisy|small|too |annoy|worst|cheap|flimsy|uneven|smell|slow|expensive|overpriced|inconsistent|flak|peel|wear|leak|burn|concern|damage|defect|missing|short|weak|rust|hurt|choke|hazard", re.I)
+            comps = [c for c in comps if not junk.search(c) and neg_strict.search(c) and not spec.search(c) and not (praise_like.search(c) and not re.search(r"\bnot\b|n't|but\b|however|except", c, re.I)) and 8 <= len(c) <= 160][:4]
             prs = [c for c in prs if not junk.search(c) and pos_cue.search(c) and 4 <= len(c) <= 160][:4]
             cur = by_merchant.get(merchant)
             entry = {"merchant": merchant, "url": canon_url(r.get("url")), "rating": rating if rating and rating <= 5 else None,
@@ -963,7 +991,7 @@ class Pulse:
                                       "pain_label": None, "praise_label": c.lower()[:60], "quote": None, "safety_issue": False,
                                       "source_kind": "owner_review", "mentions_product": True, "highlight": c, "_retail": True})
                 n += 1
-        await self.surface("retail", "done" if self.retail else "thin", n, "walmart.com excluded" if self.retail else "no retail review page readable")
+        await self.surface("retail", "done" if self.retail else "thin", n, "Amazon · Target · Best Buy · Home Depot… · walmart.com excluded" if self.retail else "no retail review page readable")
 
     async def scan_cpsc(self):
         await self.surface("cpsc", "scanning")
@@ -993,7 +1021,8 @@ class Pulse:
             seen.add(key)
             text = " ".join([norm(r.get("title")), norm(s.get("product")), norm(s.get("brand")), norm(s.get("models"))])
             model_hit = bool(m) and contains_word(text, m)
-            brand_hit = bool(b) and (contains_word(text, b) or (len(b) >= 5 and b.lower() in text.lower()))
+            nb = norm(s.get("brand") or "") + " " + norm(r.get("title"))
+            brand_hit = bool(b) and (contains_word(nb, b) or (len(b) >= 5 and b.lower() in nb.lower())) and not re.search(r"\b(the|a)\s+" + re.escape(b.lower()) + r"\b", norm(r.get("title")).lower())
             if not (model_hit or brand_hit):
                 continue
             d = parse_date(r.get("publishedDate")) or parse_date(s.get("date") or "")
@@ -1028,38 +1057,63 @@ class Pulse:
         b, m = self.product["brand"], self.product["model"]
         sq = (f"Does this page report a safety issue (recall, lawsuit, injury, fire, burn, shock, choking, contamination, regulatory action) for a "
               f"{b} product? Which product, what issue, when? Does it explicitly name the {b} {m or ''} {self.product['category']}? Same brand ({b})?")
+        sc = {"highlights": {"maxCharacters": 240, "numSentences": 2, "query": f"{b} recall lawsuit injury hazard"}, "summary": {"query": sq, "schema": SAFETY_SCHEMA}}
         r1, r2 = await asyncio.gather(
             self.exa.search("safety:news", f"{b} {self.product['category']} recall fire injury lawsuit safety", numResults=20, category="news",
-                            startPublishedDate=iso_days_ago(WINDOW_DAYS), contents={"summary": {"query": sq, "schema": SAFETY_SCHEMA}}),
-            self.exa.search("safety:agencies", f"{b} {self.product['category']} recall", numResults=10, includeDomains=SAFETY_DOMAINS,
-                            contents={"summary": {"query": sq, "schema": SAFETY_SCHEMA}}),
+                            startPublishedDate=iso_days_ago(WINDOW_DAYS), contents=sc),
+            self.exa.search("safety:agencies", f"{b} {self.product['category']} recall", numResults=10, includeDomains=SAFETY_DOMAINS, contents=sc),
         )
-        seen = set()
+        line = next((t for t in tokens(self.q) if t not in tokens(b) and not re.fullmatch(r"\d+", t)), None)   # product line word, e.g. airpods / quencher / foodi
+        cands = []
         for r in list(r1) + list(r2):
             s = parse_summary(r.get("summary"))
-            if not s.get("is_safety_related") or (s.get("kind") or "none") == "none":
+            if not s.get("is_safety_related") or (s.get("kind") or "none") not in ("recall", "lawsuit", "incident_report", "regulatory", "investigation"):
                 continue
             title, product, issue = norm(r.get("title")), norm(s.get("product") or ""), norm(s.get("issue") or "")
-            named = " ".join([title, product])
-            brand_hit = bool(b) and (contains_word(named, b) or (len(b) >= 5 and b.lower() in named.lower()))
+            hl = " ".join(r.get("highlights") or [])
+            real = " ".join([title, hl])                     # text that actually came from the page
+            brand_hit = bool(b) and (contains_word(real, b) or (len(b) >= 5 and b.lower() in real.lower()))
             if not brand_hit or not s.get("same_brand"):
+                continue
+            host = host_of(r.get("url", ""))
+            if not is_us_host(host) and not host.endswith(".gov"):
+                continue
+            first = host.split(".")[0]
+            if host.count(".") >= 2 and (re.search(r"\d", first) or first.count("-") >= 2):
+                continue           # cdn / mirror / staging subdomains
+            same_line = any(contains_word(real + " " + product, t) for t in self.cat_tokens) or (line and contains_word(real + " " + product, line))
+            if s.get("kind") in ("lawsuit", "incident_report", "investigation") and not same_line:
+                continue           # a mega-brand's unrelated lawsuits are not this product's safety story
+            if s.get("kind") in ("lawsuit", "incident_report") and not (contains_word(title, b) or (len(b) >= 5 and b.lower() in title.lower())):
+                continue           # a roundup that merely mentions the brand in passing
+            if s.get("kind") in ("incident_report", "regulatory", "investigation") and not re.search(
+                    r"injur|fire|burn|shock|chok|hazard|recall|lawsuit|melt|smoke|explod|shatter|toxic|\blead\b|contaminat|unsafe|danger|safety", (title + " " + issue).lower()):
+                continue           # a review page the classifier over-read as an incident
+            if len(title.split()) <= 2 and not r.get("publishedDate"):
                 continue
             if re.search(r"does not (report|mention|name|involve)|no (safety )?issue|not (a |an )?" + re.escape(b.lower()) + r"|different brand|unrelated|master list|market shift|roundup|round-up", (issue + " " + title).lower()):
                 continue
             if re.search(r"\b(list|guide|deals?|sale)\b", title.lower()) and s.get("kind") in ("regulatory", "investigation"):
                 continue
             text = " ".join([title, product, issue])
-            key = re.sub(r"\W+", " ", title.lower())[:50]
-            if key in seen:
-                continue
-            seen.add(key)
             d = parse_date(r.get("publishedDate")) or parse_date(s.get("date") or "")
-            self.safety_news.append({"title": norm(r.get("title"))[:120], "url": r.get("url"), "date": d.isoformat()[:10] if d else None,
-                                     "kind": s.get("kind"), "product": norm(s.get("product") or "")[:100], "issue": norm(s.get("issue") or "")[:160],
-                                     "applies_to_model": bool(m) and contains_word(text, m) and bool(s.get("applies_to_model")),
-                                     "host": host_of(r.get("url", ""))})
-        self.safety_news.sort(key=lambda x: (x["applies_to_model"], x["kind"] == "recall", x["date"] or ""), reverse=True)
-        self.safety_news = self.safety_news[:8]
+            figure = re.search(r"(\d[\d.,]*)\s*(million|m\b|k\b|,000)", text.lower())
+            ptoks = [t for t in tokens(product or title) if t not in tokens(b)][:3]
+            ekey = (s.get("kind"), figure.group(1) if figure else "", " ".join(ptoks))
+            cands.append({"title": title[:120], "url": r.get("url"), "date": d.isoformat()[:10] if d else None,
+                          "kind": s.get("kind"), "product": product[:100], "issue": issue[:160],
+                          "applies_to_model": bool(m) and contains_word(text, m) and bool(s.get("applies_to_model")),
+                          "host": host, "same_line": same_line, "_ekey": ekey,
+                          "_rep": 3 if host in REPUTABLE_HOSTS or host.endswith(".gov") else (2 if re.fullmatch(r"[a-z0-9-]+\.(com|org|net)", host) and host.count("-") <= 1 else 1)})
+        cands.sort(key=lambda x: (x["applies_to_model"], x["_rep"], x["same_line"], x["date"] or ""), reverse=True)
+        seen_e = set()
+        for c in cands:
+            if c["_ekey"] in seen_e:
+                continue
+            seen_e.add(c["_ekey"])
+            self.safety_news.append({k: v for k, v in c.items() if not k.startswith("_")})
+        self.safety_news.sort(key=lambda x: (x["applies_to_model"], x["kind"] == "recall", x["same_line"], x["date"] or ""), reverse=True)
+        self.safety_news = self.safety_news[:5]
 
     # ---- 3. price & listings
     def _listing_contents(self):
@@ -1141,11 +1195,13 @@ class Pulse:
                 continue
             if re.search(r"used|refurb|renew|open box|3rd party", merchant, re.I):
                 continue
-            merchant = self._clean_merchant(merchant, host_of(url))
+            merchant = self._clean_merchant(merchant, host_of(url), url=url)
             if not merchant:
                 continue
             self.observations.append({"merchant": merchant, "price": price, "prev": None, "date": d, "url": url, "host": host_of(url),
                                       "event": "listing", "kind": "event", "_answer": True})
+        for x in (rs[3] if isinstance(rs[3], list) else []):
+            x["_from_news"] = True
         seen = set()
         for r in [x for res in rs[:-1] if isinstance(res, list) for x in res]:
             if r.get("url") in seen:
@@ -1167,7 +1223,7 @@ class Pulse:
                 continue
             if not is_us_host(host_of(r.get("url", ""))) and "walmart" not in merchant.lower():
                 continue
-            merchant = self._clean_merchant(merchant, host_of(r.get("url", "")))
+            merchant = self._clean_merchant(merchant, host_of(r.get("url", "")), from_news=(r.get("_from_news", False)), url=r.get("url", ""))
             if not merchant:
                 continue
             prev = to_float(s.get("previous_price_usd"))
@@ -1177,23 +1233,43 @@ class Pulse:
                                       "date": d, "url": r.get("url"), "host": host_of(r.get("url", "")),
                                       "event": s.get("event") or "none", "kind": "event"})
 
-    def _clean_merchant(self, merchant, host):
-        """Merchant named by a deal post / answer. Known stores keep their canonical name; a store naming itself
-        gets its host; aggregates and second-hand marketplaces are dropped."""
-        m = re.split(r"\s*[|·(]", norm(merchant))[0].strip()[:28]
+    NON_US_MERCHANTS = re.compile(r"^(very|argos|currys|john lewis|tesco|asda|jb hi-?fi|canadian tire|smyths|zavvi|the range|b&m|dunelm|screwfix|wickes|boots|superdrug|coles|woolworths|big w|kmart australia|amazon\.(ca|co\.uk|de|fr|com\.au))$", re.I)
+
+    def _clean_merchant(self, merchant, host, from_news=False, url=""):
+        """Merchant named by a deal post / answer / listing.
+        - the page is a known big-box store            -> its canonical name
+        - the page is a deal or news site               -> the merchant the post names (mapped to a big-box name when it is one), never the site itself
+        - the page is some other store                  -> the store's own host (a shop's self-description is easy to game)
+        - aggregates, second-hand and refurb marketplaces are dropped"""
+        m = re.split(r"\s*[|·(]|\s+(?:or|and|/|&)\s+", norm(merchant))[0].strip()[:28]
+        m = re.sub(r"\.(com|net|org|us)$", "", m, flags=re.I).strip()
         ml = m.lower()
+        if host in BIG_BOX:
+            return BIG_BOX[host]
+        if re.search(r"\b(spain|españa|uk|u\.k\.|canada|mexico|germany|france|italy|australia|japan|india|brazil|ireland|europe|eu)\b", ml):
+            return None
         if not m or re.search(r"\.(it|de|fr|es|eu|uk|ca|au)\b|multiple|various|several|retailers|marketplace|n/a|unknown|walmart marketplace", ml):
             return None
-        if re.search(r"ebay|craigslist|facebook|mercari|poshmark|offerup|aliexpress|temu|wish\b|dhgate|shopgoodwill", ml):
+        if re.search(r"ebay|craigslist|facebook|mercari|poshmark|offerup|aliexpress|temu|wish\b|dhgate|shopgoodwill|back ?market|swappa|gazelle|decluttr|reebelo", ml + " " + (host or "")):
             return None
         if "walmart" in ml:
             return "Walmart"
-        for h, name in BIG_BOX.items():
-            if name.lower() == ml or h.split(".")[0] == re.sub(r"[^a-z0-9]", "", ml):
-                return name
-        if host and host not in BIG_BOX and host not in NON_MERCHANT and re.sub(r"[^a-z0-9]", "", ml) in re.sub(r"[^a-z0-9]", "", host):
+        if self.NON_US_MERCHANTS.match(ml):
+            return None
+        path = urlparse(url).path.lower() if url else ""
+        is_deal_site = (from_news or host in DEAL_NEWS_HOSTS or host in TRACKER_DOMAINS or (host or "").endswith(".gov")
+                        or bool(re.search(r"deal|coupon|bargain|slick|news|blog|magazine|journal|times|post|herald|gazette|tribune|review|guide|manual|digest|insider|report", host or ""))
+                        or bool(re.search(r"/(deals?|shopping|news|blog|reviews?|articles?|guides?|best-|top-|posts?|stories|\d{4}/\d{2})/", path)))
+        if is_deal_site:
+            if re.sub(r"[^a-z0-9]", "", ml) in re.sub(r"[^a-z0-9]", "", host or ""):
+                return None          # the post names the deal site itself as the merchant
+            for h, name in BIG_BOX.items():
+                if name.lower() == ml or h.split(".")[0] == re.sub(r"[^a-z0-9]", "", ml):
+                    return name
+            return m
+        if host and host not in NON_MERCHANT:
             return pretty_host(host) if is_us_host(host) else None
-        return m
+        return None
 
     async def scan_camel(self):
         res = await self.exa.search("prices:trackers", f"{self.q} price history", numResults=10, includeDomains=TRACKER_DOMAINS,
@@ -1290,6 +1366,9 @@ class Pulse:
             def tidy(lbl):
                 lbl = re.sub(r"^(some |a few |many |several |most )?(customers?|users?|reviewers?|owners?|people|buyers?)\s+(say|report|mention|note|complain|find|feel|think)\s+(that\s+)?(it\s+|the\s+)?", "", lbl.strip().lower())
                 lbl = re.sub(r"^(the|a|an)\s+", "", lbl)
+                lbl = re.sub(r"\s*\((not stated|not specified|unspecified|n/a|none|unknown)\)", "", lbl)
+                if re.search(r"not stated|not specified|not explicit|no explicit|n/a|unknown|none reported", lbl):
+                    return ""
                 return re.sub(r"[.\"']+$", "", lbl).strip()
             pat = PAIN_WORDS.get(cat, "")
             labels = Counter(tidy(m["pain_label"]) for m in items if m["pain_label"] and 3 <= len(m["pain_label"]) <= 80)
@@ -1299,6 +1378,7 @@ class Pulse:
             else:
                 short = sorted([k for k in labels if len(k) <= 36], key=len)
                 title = short[0] if short else PAIN_DISPLAY.get(cat, cat)
+            _title_from_labels = title
             src = Counter(m["source"] for m in items)
             tot = sum(src.values())
             sources = [{"key": k, "pct": round(v / tot * 100)} for k, v in src.most_common(3)]
@@ -1306,41 +1386,58 @@ class Pulse:
                 sources[0]["pct"] += 100 - sum(s["pct"] for s in sources)
             di = [m for m in items if m["_dt"]]
             c30 = sum(1 for m in di if (as_of - m["_dt"]).days <= 30)
+            c_prev30 = sum(1 for m in di if 30 < (as_of - m["_dt"]).days <= 60)
             praw = sum(1 for m in di if 30 < (as_of - m["_dt"]).days <= WINDOW_DAYS)
             cprev = praw / ((WINDOW_DAYS - 30) / 30.0)      # prior months, per-30-day rate
             if len(di) < 3:
                 trend, pct = "flat", None
             elif praw == 0 and c30 >= 3:
                 trend, pct = "new", None
-            elif c30 >= 3 and cprev > 0 and (c30 - cprev) / cprev >= 0.5:
-                trend, pct = "rising", round((c30 - cprev) / cprev * 100)
+            elif c30 >= 4 and cprev > 0 and c30 >= 1.5 * max(cprev, c_prev30) and (c30 - cprev) / cprev >= 0.5:
+                trend, pct = "rising", min(300, round((c30 - cprev) / cprev * 100))
             elif praw >= 4 and c30 >= 1 and c30 <= cprev * 0.5:
                 trend, pct = "falling", round((c30 - cprev) / cprev * 100)
             else:
                 trend, pct = "flat", None
             firsts = [m["_dt"] for m in di]
             quote = None
-            NEG = re.compile(r"\bnot\b|n't|\bno\b|hard|difficult|hate|poor|bad|issue|problem|disappoint|complain|wish|lack|only|broke|stopp|fail|loud|small|too |annoy|worst|cheap|flimsy|uneven|smell|slow|expensive|overpriced|inconsistent|flak|peel|wear|leak|burn", re.I)
-            POS = re.compile(r"easy|great|love|excellent|recommend|perfect|best|exceptional|solid|reliable|works well|happy|pleased|fast|crispy|dependable", re.I)
+            NEG = re.compile(r"\bnot\b|n't|\bno\b|hard|difficult|hate|poor|bad|issue|problem|disappoint|complain|wish|lack|broke|stopp|fail|loud|small|too |annoy|worst|cheap|flimsy|uneven|smell|slow|expensive|overpriced|inconsistent|flak|peel|wear|leak|burn|gripe|frustrat|struggl|unfortunately|downside|con\b|cons\b|meh", re.I)
+            POS = re.compile(r"easy|great|love|excellent|recommend|perfect|best|exceptional|solid|reliable|works well|happy|pleased|fast|crispy|dependable|worth it|prevents|avoids|eliminates|solves|without (any|the)|no (issue|problem|complaint)s?", re.I)
             def voices(m):
                 q = m["quote"] or ""
                 if not (20 <= len(q) <= 200 and pat and re.search(pat, q.lower())):
                     return False
                 if m.get("_retail"):
                     return True
-                if not (m["sentiment"] in ("negative", "mixed") or NEG.search(q)):
-                    return False
-                return not (POS.search(q) and not NEG.search(q))
-            cands = [m for m in items if voices(m)]
+                if m["sentiment"] == "negative":
+                    return not (POS.search(q) and not NEG.search(q))
+                if m["sentiment"] == "mixed":
+                    return bool(NEG.search(q)) and not re.search(r"prevents|avoids|eliminates|solves|worth it|no (issue|problem|complaint)s?", q, re.I)
+                return False
+            JUNKQ = re.compile(r"not explicit|no explicit|not stated|not specified|no specific|provided (text|excerpt)|cannot be determined|unspecified", re.I)
+            cands = [m for m in items if voices(m) and not JUNKQ.search(m["quote"] or "")]
             cands.sort(key=lambda m: (m["sentiment"] == "negative", bool(NEG.search(m["quote"] or "")), m["source_kind"] in ("owner_review", "forum_thread", "video"), len(m["quote"] or "")), reverse=True)
+            if not cands:
+                # fall back to an extractive highlight that voices the complaint
+                for m in sorted(items, key=lambda m: (m["sentiment"] == "negative", m["sentiment"] == "mixed"), reverse=True):
+                    h = norm(m.get("highlight") or "")
+                    if m.get("_retail") or not h or not (pat and re.search(pat, h.lower())) or not NEG.search(h):
+                        continue
+                    if 30 <= len(h) <= 260:
+                        cands = [{**m, "quote": h}]
+                        break
             if cands:
                 q = cands[0]
                 quote = {"text": q["quote"], "source_label": q["host"] or q["source"], "url": q["url"]}
             else:
-                rq = [m for m in items if m.get("_retail") and m.get("highlight")]
+                rq = [m for m in items if m.get("_retail") and m.get("highlight") and not JUNKQ.search(m["highlight"])]
                 if rq:
                     q = rq[0]
                     quote = {"text": q["highlight"], "source_label": f"{q['host']} reviews", "url": q["url"]}
+            if cands:
+                ql = tidy(cands[0].get("pain_label") or "")
+                if 3 <= len(ql) <= 36 and pat and re.search(pat, ql) and labels.get(_title_from_labels, 0) < 2:
+                    title = ql
             evidence = [{"title": m["title"], "url": m["url"], "date": m["date"], "source": m["source"]} for m in items]
             clusters.append({"title": title, "category": cat, "mentions": len(items), "trend": trend, "trend_pct": pct,
                              "first_seen": min(firsts).isoformat()[:10] if firsts else None, "sources": sources, "quote": quote,
@@ -1374,7 +1471,7 @@ class Pulse:
             r = max(rated, key=lambda r: r["review_count"] or 0)
             retail = {"rating": r["rating"], "review_count": r["review_count"], "merchant": r["merchant"], "url": r["url"]}
         n_rising = sum(1 for c in clusters if c["trend"] in ("rising", "new"))
-        safety_cluster = next((c for c in clusters if c["category"] == "safety" and c["mentions"] >= 2), None)
+        safety_cluster = next((c for c in clusters if c["category"] == "safety" and c["mentions"] >= 3), None)
 
         # ---------- price observations & series
         obs = []
@@ -1393,8 +1490,9 @@ class Pulse:
             if h in BIG_BOX:
                 return BIG_BOX[h]
             m = o["merchant"]
+            ml = re.sub(r"[^a-z0-9]", "", m.lower())
             for hh, nm in BIG_BOX.items():
-                if nm.lower() in m.lower() or hh.split(".")[0] in m.lower():
+                if re.sub(r"[^a-z0-9]", "", nm.lower()) == ml or hh.split(".")[0] == ml:
                     return nm
             if "walmart" in m.lower():
                 return "Walmart"
@@ -1473,12 +1571,14 @@ class Pulse:
             if o["kind"] != "event":
                 continue
             ev = o["event"]
+            if ev in ("price_drop", "sale", "new_low") and o.get("prev") and o["prev"] < o["price"]:
+                ev = "price_increase"
             if ev in ("price_drop", "sale", "new_low"):
                 verb = ("promo" if ev == "sale" else "new web low" if ev == "new_low" else ("cuts" if o.get("prev") else "deal"))
                 lab = f"{o['mname']} {verb}: " + (f"${o['prev']:.2f} → " if o.get("prev") else "") + f"${o['price']:.2f}"
                 events.append({"day": day_of(o["date"]), "date": o["date"].isoformat()[:10], "label": lab, "url": o["url"], "kind": "new_low" if ev == "new_low" else "price_drop", "_p": 2 if ev == "new_low" else 1})
             elif ev == "price_increase":
-                events.append({"day": day_of(o["date"]), "date": o["date"].isoformat()[:10], "label": f"{o['mname']} raises to ${o['price']:.2f}", "url": o["url"], "kind": "price_increase", "_p": 1})
+                events.append({"day": day_of(o["date"]), "date": o["date"].isoformat()[:10], "label": f"{o['mname']} raises: " + (f"${o['prev']:.2f} → " if o.get("prev") else "") + f"${o['price']:.2f}", "url": o["url"], "kind": "price_increase", "_p": 1})
             elif ev == "out_of_stock":
                 events.append({"day": day_of(o["date"]), "date": o["date"].isoformat()[:10], "label": f"{o['mname']} goes OOS", "url": o["url"], "kind": "oos", "_p": 1})
             elif ev == "restock":
@@ -1711,6 +1811,9 @@ class Pulse:
         else:
             st = "clear"
         top = clusters[0] if clusters else None
+        for c in clusters:
+            if c["title"] == "safety":
+                c["title"] = "safety concerns"
         board.append({"key": "sentiment", "num": "01", "title": "Sentiment Pulse", "status": st,
                       "line1": (f"{score:.2f} · {delta:+.2f} / 30d" if score is not None and delta is not None else f"{score:.2f} · trend n/a" if score is not None else "score — · thin data"),
                       "line1_color": "red" if delta is not None and delta <= -0.05 else "amber" if delta is not None and delta <= -0.03 else "grey",
@@ -1784,7 +1887,7 @@ class Pulse:
         report = {
             "id": self.id, "url": self.p["url"], "as_of": as_of.strftime("%Y-%m-%dT%H:%M:%SZ"), "from_cache": False,
             "product": {k: v for k, v in P.items() if k != "confidence"} | {"confidence": P.get("confidence")},
-            "surfaces": [self.surfaces[k] for k in ("reddit", "youtube", "tiktok", "news", "forums", "retail", "cpsc") if k in self.surfaces],
+            "surfaces": [self.surfaces[k] for k in ("retail", "reviews", "forums", "news", "reddit", "cpsc") if k in self.surfaces],
             "mentions": {"total": len(web_mentions), "last30": m_last30, "prev30": m_prev30, "velocity_pct": velocity, "window_days": WINDOW_DAYS, "labeled_total": len(mentions)},
             "verdict": verdict,
             "board": board,
@@ -1827,10 +1930,10 @@ class Pulse:
             raise RuntimeError("Exa credits are exhausted on the server's API key — top up at dashboard.exa.ai, then run again")
         await self.emit_raw("resolve", {"id": self.id, "url": self.p["url"], "name": self.product["name"], "brand": self.product["brand"],
                                         "model": self.product["model"], "short": self.product["short"], "aliases": self.product["aliases"]})
-        for k in ("reddit", "youtube", "tiktok", "news", "forums", "retail", "cpsc"):
+        for k in ("retail", "reviews", "forums", "news", "reddit", "cpsc"):
             await self.surface(k, "queued")
-        names = ["reddit", "youtube", "tiktok", "news", "forums", "retail", "cpsc", "listings", "price_events", "camel", "dupes", "safety_news"]
-        scans = [self.scan_reddit(), self.scan_youtube(), self.scan_tiktok(), self.scan_news(), self.scan_forums(), self.scan_retail(), self.scan_cpsc(),
+        names = ["reddit", "news", "forums", "retail", "cpsc", "listings", "price_events", "camel", "dupes", "safety_news"]
+        scans = [self.scan_reddit(), self.scan_news(), self.scan_forums(), self.scan_retail(), self.scan_cpsc(),
                  self.scan_listings(), self.scan_price_events(), self.scan_camel(), self.scan_dupes(), self.scan_safety_news()]
         results = await asyncio.gather(*scans, return_exceptions=True)
         self.scan_errors = []
@@ -1871,7 +1974,7 @@ def load_cache(item_id, max_age_hours=None):
 
 def live_gate(ip):
     if _active_runs >= MAX_CONCURRENT_RUNS:
-        return "Three live reports are already running — give them a minute, or replay a preset (cached, instant)."
+        return f"{MAX_CONCURRENT_RUNS} live reports are already running — give them a minute, or replay a preset (cached, instant)."
     now = time.time()
     while _run_log and now - _run_log[0] > 3600:
         _run_log.popleft()

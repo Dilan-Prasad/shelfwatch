@@ -10,7 +10,7 @@ Design source of truth: `design/product-pulse-v2.dc.html` (Claude Design export)
 - `GET /api/pulse?url=<walmart url>&mode=live|cached` → **SSE stream** (text/event-stream). Events (`event: <name>` + `data: <json>`):
   - `resolve`  `{ "id":"1967919184", "url":"<normalized walmart url>", "name":"Ninja AF101 Air Fryer, 4-Quart …", "brand":"Ninja", "model":"AF101", "short":"Ninja / AF101 (4 qt)", "aliases":[{"text":"Ninja AF101","support":0.99},…] }`
      `aliases` arrive in 1–3 items; `support` is a 0–1 fraction of resolved web listings whose title matched the alias (deterministic).
-  - `surface`  `{ "key":"youtube", "label":"youtube", "status":"queued|scanning|done|thin|indirect|degraded", "n":12, "note":"…" }` — one event per status change. Surface keys in order: `reddit, youtube, tiktok, news, forums, retail, cpsc`. (`retail` = amazon/target/bestbuy review pages; walmart.com is never a sentiment source.)
+  - `surface`  `{ "key":"youtube", "label":"youtube", "status":"queued|scanning|done|thin|indirect|degraded", "n":12, "note":"…" }` — one event per status change. Surface keys in order: `retail, reviews, forums, news, reddit, cpsc`. (`retail` = amazon/target/bestbuy review pages; `reviews` = review sites and blogs; `forums` = community domains; `reddit` = quotes reproduced on third-party pages; walmart.com is never a sentiment source; TikTok/YouTube are not scanned.)
   - `count`    `{ "mentions": 87, "window_days": 365 }` — total unique external mentions retrieved for the last 12 months (the big animated number; caption "external mentions found in the last 12 months").
   - `report`   full report JSON (schema below). After this the frontend may switch to the Report view (auto after the count animation, or when the user clicks "skip to report").
   - `error`    `{ "message":"…", "code":"not_walmart|not_found|rate_limited|upstream" }`
@@ -30,7 +30,7 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
   "from_cache": false,
   "product": { "name": "…", "brand": "Ninja", "model": "AF101", "upc": "622356554572"|null, "category": "air fryer",
                "short": "Ninja / AF101 (4 qt)", "aliases": [{"text":"…","support":0.99}] },
-  "surfaces": [ { "key":"youtube","label":"youtube","status":"done","n":12,"note":"" }, … ],   // 7 entries, final statuses
+  "surfaces": [ { "key":"retail","label":"retail reviews","status":"done","n":18,"note":"" }, … ],   // 6 entries, final statuses
   "mentions": { "total": 87, "last30": 31, "prev30": 24, "velocity_pct": 12 | null, "window_days": 365 },
 
   "verdict": { "lead": "Positive but cooling.",                       // big serif line, plain

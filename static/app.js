@@ -24,7 +24,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const STATUS = { act: { color: '#FF5A4E', text: '#FF7A70', label: 'act now' }, watch: { color: '#F5B14A', text: '#F5B14A', label: 'watch' }, clear: { color: '#3DD68C', text: '#3DD68C', label: 'clear' }, thin: { color: '#6E7A94', text: '#6E7A94', label: 'thin data' } };
 const TONE = { grey: '#A9B3C9', amber: '#F5B14A', red: '#FF7A70', green: '#3DD68C', blue: '#6F8BFF' };
 const TREND = { rising: { dot: '#FF5A4E', text: '#FF7A70' }, flat: { dot: '#F5B14A', text: '#F5B14A' }, falling: { dot: '#3DD68C', text: '#3DD68C' }, new: { dot: '#6F8BFF', text: '#6F8BFF' } };
-const SURFACES = [['reddit', 'reddit'], ['youtube', 'youtube'], ['tiktok', 'tiktok'], ['news', 'news'], ['forums', 'forums & blogs'], ['retail', 'retail reviews'], ['cpsc', 'cpsc']];
+const SURFACES = [['retail', 'retail reviews'], ['reviews', 'owner & expert reviews'], ['forums', 'forums & communities'], ['news', 'news'], ['reddit', 'reddit · quoted'], ['cpsc', 'cpsc & safety news']];
 const SURFACE_LABEL = Object.fromEntries(SURFACES);
 const SHARE_COLORS = ['#1840ED', '#6F8BFF', '#2A3A6B'];
 const PALETTE = [250, 300, 215, 275, 330, 190, 45, 120, 20, 160].map(h => `oklch(74% 0.12 ${h})`);
@@ -55,7 +55,7 @@ function viewIntake() {
   <div class="hero">
     <div class="eyebrow blue">Pulse report · one walmart.com product URL</div>
     <h1>Every product has a <span class="accent">pulse.</span></h1>
-    <p class="lede">Paste a walmart.com product URL. Product Pulse reads the open web — Reddit, YouTube, TikTok, news, forums, CPSC — and returns one report: sentiment, price history, live listings, internal dupes, recall status.</p>
+    <p class="lede">Paste a walmart.com product URL. Product Pulse reads the open web — retail review pages, owner &amp; expert reviews, forums, news, CPSC, and Reddit as quoted by third parties — and returns one report: sentiment, price history, live listings, internal dupes, recall status.</p>
     <div class="urlbar">
       <input id="url" type="url" spellcheck="false" autocomplete="off" placeholder="https://www.walmart.com/ip/…" value="${attr(S.url)}">
       <button class="btn-primary" data-action="submit">Check the pulse →</button>
@@ -65,7 +65,7 @@ function viewIntake() {
   </div>
   <div class="intake-foot">
     <span>sentiment pulse · historical price · listing radar · internal dupes · recall &amp; safety</span>
-    <span>walmart.com excluded from sentiment</span>
+    <span>walmart.com excluded from sentiment · social platforms not scraped</span>
   </div>
 </div>`;
 }
@@ -233,7 +233,7 @@ function evidenceList(c, rank) {
 function secSentiment(r) {
   const s = r.sentiment || {}, m = r.mentions || {}, clusters = s.clusters || [], praises = s.praises || [];
   const asof = fmtAsOf(r.as_of);
-  const head = secHead('01', 'Sentiment Pulse', 'How do people actually feel about this product?', `as_of ${asof}<br>external web only · walmart.com excluded`);
+  const head = secHead('01', 'Sentiment Pulse', 'How do people actually feel about this product?', `as_of ${asof}<br>reviews · forums · news · walmart.com excluded`);
   const d = s.delta30;
   const dchip = d == null ? `<span class="chip chip-grey">n/a · 30d</span>` : `<span class="chip ${d < -0.005 ? 'chip-amber' : d > 0.005 ? 'chip-green' : 'chip-grey'}">${sign(d)}${Math.abs(d).toFixed(2)} · 30d</span>`;
   const v = m.velocity_pct;
