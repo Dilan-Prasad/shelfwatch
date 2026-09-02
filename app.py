@@ -621,12 +621,16 @@ class Pulse:
         a = {k: clean_val(v) for k, v in (a or {}).items()}
         wm_title = ""
         wm_hits = []
+        wm_indexed = None
         for r in res[1:]:
             if isinstance(r, list):
                 wm_hits.extend(r)
         for r in wm_hits:
             u = r.get("url", "")
             if re.search(rf"/(?:ip|product)/(?:[^/?#]*/)?{p['id']}(?:[/?#]|$)", u):
+                dd = parse_date(r.get("publishedDate"))
+                if dd and (wm_indexed is None or dd > wm_indexed):
+                    wm_indexed = dd
                 t = norm(r.get("title"))
                 t = re.sub(r"^customer reviews for\s+", "", t, flags=re.I)
                 t = re.sub(r"\s*[-|–]\s*walmart(\.com)?\s*$", "", t, flags=re.I)
@@ -662,7 +666,8 @@ class Pulse:
             short += f" ({size})"
         self.product = {"name": name, "brand": brand, "model": model, "upc": upc, "category": category, "size": size,
                         "short": short, "aliases": [{"text": x, "support": None} for x in aliases],
-                        "confidence": a.get("confidence") or "low"}
+                        "confidence": a.get("confidence") or "low",
+                        "wm_in_index": bool(wm_title), "wm_indexed": wm_indexed.isoformat()[:10] if wm_indexed else None}
         # which term do people actually use for this product? A model that appears in the Walmart listing
         # itself (AF101, 75440) is the best key; a part number that never appears there (Apple's MTJV3) is not.
         listing_text = f"{name} {slug} {wm_title}".lower()
@@ -1086,6 +1091,8 @@ class Pulse:
                 continue           # a mega-brand's unrelated lawsuits are not this product's safety story
             if s.get("kind") in ("lawsuit", "incident_report") and not (contains_word(title, b) or (len(b) >= 5 and b.lower() in title.lower())):
                 continue           # a roundup that merely mentions the brand in passing
+            if s.get("kind") == "lawsuit" and not re.search(r"injur|burn|fire|defect|hazard|recall|safety|\blead\b|toxic|explod|shock|chok|melt|crack|rupture|overheat|contaminat", (title + " " + issue).lower()):
+                continue           # patent, labour or advertising suits are not safety
             if s.get("kind") in ("incident_report", "regulatory", "investigation") and not re.search(
                     r"injur|fire|burn|shock|chok|hazard|recall|lawsuit|melt|smoke|explod|shatter|toxic|\blead\b|contaminat|unsafe|danger|safety", (title + " " + issue).lower()):
                 continue           # a review page the classifier over-read as an incident
@@ -1412,7 +1419,7 @@ class Pulse:
                 if m["sentiment"] == "negative":
                     return not (POS.search(q) and not NEG.search(q))
                 if m["sentiment"] == "mixed":
-                    return bool(NEG.search(q)) and not re.search(r"prevents|avoids|eliminates|solves|worth it|no (issue|problem|complaint)s?", q, re.I)
+                    return bool(NEG.search(q)) and not re.search(r"prevent|avoid|eliminat|solve|worth it|no (issue|problem|complaint)s?|easy (bin|to)", q, re.I)
                 return False
             JUNKQ = re.compile(r"not explicit|no explicit|not stated|not specified|no specific|provided (text|excerpt)|cannot be determined|unspecified", re.I)
             cands = [m for m in items if voices(m) and not JUNKQ.search(m["quote"] or "")]

@@ -178,6 +178,7 @@ function secHeader(r) {
         <span class="pill-meta">as_of ${fmtAsOf(r.as_of)}</span>
         <span class="pill-meta">external web only</span>
         <span class="pill-meta">walmart.com excluded from sentiment</span>
+        ${p.wm_in_index === false ? `<span class="pill-meta" style="color:#F5B14A;border-color:rgba(245,177,74,.4)" title="Exa's index of walmart.com has no page for this item id — the URL may be delisted">walmart page not in Exa's index</span>` : p.wm_indexed ? `<span class="pill-meta" title="most recent date Exa indexed this walmart.com page">walmart page indexed ${esc(String(p.wm_indexed).slice(0, 10))}</span>` : ''}
       </div>
     </div>
     <p class="verdict">${esc(v.lead || '')}${v.em || v.accent ? ` <em>${esc(v.em || '')}${v.accent ? ` <span class="accent ${esc(v.accent_tone || '')}">${esc(v.accent)}</span>` : ''}</em>` : ''}</p>
