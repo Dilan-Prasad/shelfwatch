@@ -376,3 +376,5 @@ button{font-family:inherit;}
 .pnote a{color:#6E7A94}
 .pstrip.ah{border-top:0;margin-top:0}
 .pstrip.ah > div{flex:1;border-right:0}
+
+.gen-card.instant .gen-name,.gen-card.instant .gen-model,.gen-card.instant .alias,.gen-card.instant .gen-resolved{animation:none !important;opacity:1}

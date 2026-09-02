@@ -118,7 +118,7 @@ function viewGenerating() {
 </div>`;
 }
 const patchProgress = () => { const el = $('#g-progress'); if (el && S.gen) el.style.width = S.gen.progress + '%'; };
-const patchResolve = () => { const el = $('#g-resolve'); if (el) el.innerHTML = resolveInner(); };
+const patchResolve = () => { const el = $('#g-resolve'); if (!el) return; const again = !!el.querySelector('.gen-name'); el.innerHTML = resolveInner(); if (again) el.classList.add('instant'); };
 const patchSurfaces = () => { const sc = $('#g-scan'); if (sc) sc.hidden = false; const el = $('#g-surfaces'); if (el) el.innerHTML = surfacesInner(); };
 const patchSkip = () => { const b = $('#g-skip'); if (!b) return; b.disabled = !(S.gen && S.gen.report); b.textContent = b.disabled ? 'building report…' : 'skip to report →'; };
 function animateCount(target) {
