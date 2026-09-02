@@ -520,7 +520,8 @@ function secDupes(r, instant) {
   const D = r.dupes || {}; const cls = instant ? 'instant' : ''; const exact = D.exact || []; const other = D.other || []; const n = D.count_exact != null ? D.count_exact : exact.length;
   const P = r.price || {}, L = r.listings || {};
   const head = secHead('04', 'Internal Dupes', 'Is Walmart selling this product against itself?', `as_of ${fmtAsOf(r.as_of)}<br>walmart.com listings only`);
-  const pill = n > 0 ? `<span class="sig amber"><span class="dot"></span>${n} active walmart.com listing${n > 1 ? 's' : ''} for this exact product</span>` : `<span class="sig green"><span class="dot"></span>no duplicate walmart.com listing found for this exact product</span>`;
+  const nVar = exact.filter(d => d.kind === 'variant').length, nEx = exact.length - nVar;
+  const pill = n > 0 ? `<span class="sig amber"><span class="dot"></span>${n} other active walmart.com listing${n > 1 ? 's' : ''} ${nEx && nVar ? `(${nEx} exact, ${nVar} variant${nVar > 1 ? 's' : ''})` : nVar ? 'in this product family' : 'for this exact product'}</span>` : `<span class="sig green"><span class="dot"></span>no duplicate walmart.com listing found for this exact product</span>`;
   const prim = D.primary || { id: r.id, url: r.url, title: (r.product || {}).name };
   const primPrice = prim.price != null ? +prim.price : (L.walmart_price != null ? +L.walmart_price : (P.walmart && P.walmart.price != null ? +P.walmart.price : null));
   const primPriceNote = prim.price == null && primPrice != null ? `<span class="dimv sans">last observed on the open web</span>` : '';
