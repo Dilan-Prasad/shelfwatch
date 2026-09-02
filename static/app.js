@@ -466,8 +466,8 @@ function listingsHeadline(L) {
 function radarTone(text) { const t = String(text || '').toLowerCase(); if (/not the lowest|above|higher/.test(t)) return ''; if (/web low|lowest|cheapest/.test(t)) return 'green'; return 'grey'; }
 function secListings(r, instant) {
   const L = r.listings || {}; const rows = L.rows || []; const cls = instant ? 'instant' : '';
-  const head = secHead('03', 'Listing Radar', 'Who is selling this exact product right now — and where does Walmart stand?', `live ${esc(L.live_date || String(r.as_of || '').slice(0, 10))}<br>${rows.length} merchant${rows.length === 1 ? '' : 's'} · exact listings`);
-  const deep = L.deep_scan && L.deep_scan.available ? `<div class="deep"><span class="deep-note">${esc(L.deep_scan.note || 'Exa Agent + Affiliate.com catalog')}</span><button class="btn-outline" id="deep-btn" data-action="deepscan" ${S.deep.status === 'running' ? 'disabled' : ''}>${S.deep.status === 'running' ? 'Deep scan running · Exa Agent + Affiliate.com…' : S.deep.status === 'done' ? 'Deep scan merged ✓' : S.deep.status === 'error' ? 'deep scan unavailable' : 'Deep scan · Exa Agent + Affiliate.com'}</button></div>` : '';
+  const head = secHead('03', 'Listing Radar', 'Who is selling this exact product right now — and where does Walmart stand?', `${L.live_source ? esc(L.live_source) : `live ${esc(L.live_date || String(r.as_of || '').slice(0, 10))}`}<br>${rows.length} merchant${rows.length === 1 ? '' : 's'} · exact listings`);
+  const deep = L.deep_scan && L.deep_scan.available && !r.live_merged ? `<div class="deep"><span class="deep-note">${esc(L.deep_scan.note || 'Exa Agent + Affiliate.com catalog')}</span><button class="btn-outline" id="deep-btn" data-action="deepscan" ${S.deep.status === 'running' ? 'disabled' : ''}>${S.deep.status === 'running' ? 'Deep scan running · Exa Agent + Affiliate.com…' : S.deep.status === 'done' ? 'Deep scan merged ✓' : S.deep.status === 'error' ? 'deep scan unavailable' : 'Deep scan · Exa Agent + Affiliate.com'}</button></div>` : '';
   if (!rows.length) return `<section id="s03" class="wrap sec rise d4 ${cls}">${head}${thinCard('thin data', 'No live listing for this exact product was found on the open web.', 'Exa searched the major retailers and the long tail for exact-product listings; nothing that passed the exact-match check was returned.')}${deep}</section>`;
   const prices = rows.filter(x => x.price != null).map(x => +x.price);
   const wmp = L.walmart_price != null ? +L.walmart_price : null;
@@ -503,12 +503,15 @@ function secListings(r, instant) {
     const stock = x.stock === 'OOS' ? `<span class="chip chip-amber">OOS</span>` : (!x.stock || x.stock === 'unknown') ? `<span class="dim">unknown</span>` : esc(x.stock);
     const name = `<span class="mname">${esc(x.merchant || 'unknown merchant')}${x.long_tail ? '<span class="lt">long tail</span>' : ''}${x.deep ? '<span class="lt" style="border-color:rgba(111,139,255,.5);color:#6F8BFF">deep scan</span>' : ''}${x.seller ? `<span class="mseller">${esc(x.seller)}</span>` : ''}</span>`;
     const isLow = x.price != null && lowPrice != null && +x.price <= lowPrice + 0.005;
-    const pnote = x.price_note ? `<div class="pnote">${x.price_url ? link(x.price_url, esc(x.price_note) + ' ↗', 'pnote-link') : esc(x.price_note)}</div>` : '';
+    const live = /live/i.test(x.price_source || '');
+    const pnote = x.price_note ? `<div class="pnote">${x.price_url ? link(x.price_url, esc(x.price_note) + ' ↗', 'pnote-link') : esc(x.price_note)}</div>`
+      : x.price != null ? `<div class="pnote ${live ? 'live' : ''}">${live ? '● live' : 'indexed'}${x.on_sale && x.list_price != null ? ` · was ${money(x.list_price)}` : ''}</div>` : '';
     return `<tr><td>${name}</td><td class="r price${isLow || (d != null && d < 0) ? ' b' : ''}">${x.price != null ? Number(x.price).toFixed(2) : '—'}${pnote}</td>${dcell}<td>${stock}</td><td>${esc(x.type || 'exact')}</td><td class="${x.first_seen ? '' : 'dim'}">${x.first_seen ? esc(x.first_seen) : '—'}</td><td class="r">${link(x.url, 'open ↗', 'open')}</td></tr>`;
   }).join('');
   const table = `<table class="tbl"><thead><tr><th>merchant</th><th class="r">price</th><th class="r">Δ 30d</th><th>stock</th><th>listing type</th><th>first seen</th><th class="r">open</th></tr></thead><tbody>${trs}</tbody></table>`;
   const lt = rows.filter(x => x.long_tail).length;
-  const note = `<p class="method"><b>Long tail</b> — ${lt ? `${lt} merchant${lt === 1 ? '' : 's'} outside the big-box set. Competitors no in-house price monitor covers; found by searching the open web for the exact product.` : 'no long-tail merchant surfaced for this product; only big-box listings were found.'}</p>`;
+  const nLive = rows.filter(x => /live/i.test(x.price_source || '')).length;
+  const note = `<p class="method"><b>Prices</b> — ${nLive ? `${nLive} marked ● live come from the Affiliate.com catalog via Exa Connect (sale price if on sale). ` : ''}Prices marked indexed were read from the merchant page in Exa's index and can lag a sale. <b>Long tail</b> — ${lt ? `${lt} merchant${lt === 1 ? '' : 's'} outside the big-box set, found by searching the open web for the exact product.` : 'no long-tail merchant surfaced for this product.'}</p>`;
   return `<section id="s03" class="wrap sec rise d4 ${cls}">${head}${radar}${chips}${table}${note}${deep}</section>`;
 }
 
@@ -528,14 +531,16 @@ function secDupes(r, instant) {
     const cell = (content, i, cls) => `<div class="${cls || ''}${i > 0 ? ' b' : ''}">${content}</div>`;
     const row = (label, cells) => `<div class="k">${label}</div>${cells.map((c, i) => cell(c.html, i, c.cls)).join('')}`;
     const itemCells = [{ html: `${link(prim.url, `WMT:${esc(prim.id || r.id)} ↗`)}${prim.title ? `<div class="dtitle">${esc(prim.title)}</div>` : ''}` }].concat(shown.map(d => ({ html: `${link(d.url, `WMT:${esc(d.id)} ↗`)}${d.title ? `<div class="dtitle">${esc(d.title)}</div>` : ''}` })));
-    const priceCells = [{ html: `<div class="cell"><span class="big">${primPrice != null ? money(primPrice) : '—'}</span>${primPriceNote}</div>` }].concat(shown.map(d => { let chip = ''; if (d.price != null && primPrice != null) { const diff = +d.price - primPrice; chip = Math.abs(diff) < 0.005 ? `<span class="chip chip-grey">same price</span>` : diff < 0 ? `<span class="chip chip-red">${money(Math.abs(diff))} under primary</span>` : `<span class="chip chip-grey">${money(diff)} over primary</span>`; } return { html: `<div class="cell"><span class="big${d.price != null ? ' bold' : ''}">${d.price != null ? money(d.price) : '—'}</span>${chip}${d.price == null ? `<span class="dimv sans">not crawlable</span>` : ''}</div>` }; }));
+    const primPriceNote2 = prim.confirmed ? `<span class="dimv sans" style="color:#3DD68C">✓ Affiliate.com catalog</span>` : primPriceNote;
+    const priceCells = [{ html: `<div class="cell"><span class="big">${primPrice != null ? money(primPrice) : '—'}</span>${primPriceNote2}</div>` }].concat(shown.map(d => { let chip = ''; if (d.price != null && primPrice != null) { const diff = +d.price - primPrice; chip = Math.abs(diff) < 0.005 ? `<span class="chip chip-grey">same price</span>` : diff < 0 ? `<span class="chip chip-red">${money(Math.abs(diff))} under primary</span>` : `<span class="chip chip-grey">${money(diff)} over primary</span>`; } return { html: `<div class="cell"><span class="big${d.price != null ? ' bold' : ''}">${d.price != null ? money(d.price) : '—'}</span>${chip}${d.price == null ? `<span class="dimv sans">not readable from the open web</span>` : d.confirmed ? `<span class="dimv sans" style="color:#3DD68C">✓ Affiliate.com catalog</span>` : ''}</div>` }; }));
     const rv = o => o && o.rating != null ? `${Number(o.rating).toFixed(1)}★ <span class="dim">·</span> ${num(o.reviews)}` : `<span class="dimv">—</span>`;
+    const anyReviews = [prim, ...shown].some(o => o && o.rating != null);
     const reviewCells = [{ html: rv(prim) }].concat(shown.map(d => ({ html: rv(d) })));
     const srcCells = [{ html: `<span class="sans">${esc(prim.seller || '—')}</span>` }].concat(shown.map(d => ({ html: `<span class="sans">${esc(d.seller || '—')}</span>` })));
     const seenCells = [{ html: `<span class="dimv">${prim.indexed ? fmtMonthY(prim.indexed) : '—'}</span>` }].concat(shown.map(d => ({ html: d.indexed ? `<span style="font-size:14px">${fmtMonthY(d.indexed)}</span>` : `<span class="dimv">—</span>` })));
     grid = `<div class="dgrid" style="${cols}">
-      <div class="h k"></div><div class="h">Listing A · primary</div>${shown.map((d, i) => `<div class="h b">Listing ${letters[i]} · ${esc(d.seller || 'walmart.com')}</div>`).join('')}
-      ${row('item', itemCells)}${row('price', priceCells)}${row('reviews', reviewCells)}${row('source', srcCells)}${row('first seen', seenCells)}
+      <div class="h k"></div><div class="h">Listing A · primary</div>${shown.map((d, i) => `<div class="h b">Listing ${letters[i]} · ${d.confirmed ? '✓ live' : 'from Exa index'}</div>`).join('')}
+      ${row('item', itemCells)}${row('price', priceCells)}${anyReviews ? row('reviews', reviewCells) : ''}${row('seller', srcCells)}${row('first seen', seenCells)}
     </div>${D.note ? `<div class="under">${esc(D.note)}</div>` : ''}`;
   } else {
     grid = `<div class="dupe-clear"><div class="cl-rank"><span class="dot" style="background:#3DD68C"></span><span class="cl-label" style="color:#3DD68C">clear</span></div><div class="t">Only one walmart.com listing carries this exact product in Exa's index of walmart.com.</div>${D.note ? `<div class="under">${esc(D.note)}</div>` : ''}</div>`;

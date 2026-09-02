@@ -1649,7 +1649,7 @@ class Pulse:
                 if (as_of - l["published"]).days <= 30:
                     note = "new " + l["published"].strftime("%b %-d")
                 first_seen = l["published"].strftime("%b %Y")
-            rows.append({"merchant": nm, "price": l["price"], "delta30": d30, "delta30_note": note,
+            rows.append({"merchant": nm, "price": l["price"], "delta30": d30, "delta30_note": note, "price_source": "indexed page" if l["price"] else None,
                          "stock": "in stock" if l["in_stock"] is True else "OOS" if l["in_stock"] is False else "unknown",
                          "type": "exact", "first_seen": first_seen, "url": l["url"], "long_tail": l["long_tail"], "seller": l["seller"]})
         for r in rows:
@@ -2021,10 +2021,13 @@ async def api_presets():
 
 @app.get("/api/report/{item_id}")
 async def api_report(item_id: str):
-    d = load_cache(re.sub(r"\D", "", item_id))
+    iid = re.sub(r"\D", "", item_id)
+    d = load_cache(iid)
     if not d:
         return JSONResponse({"error": "no cached report"}, status_code=404)
     d["from_cache"] = True
+    if deep_path(iid).exists():
+        d = merge_deep(d, json.loads(deep_path(iid).read_text()))
     return d
 
 
@@ -2044,6 +2047,11 @@ async def api_pulse(request: Request, url: str = "", mode: str = "live"):
         cached = load_cache(parsed["id"], CACHE_TTL_HOURS if mode == "live" else None)
         if cached and (mode == "cached" or mode == "live"):
             cached["from_cache"] = True
+            if deep_path(parsed["id"]).exists():
+                try:
+                    cached = merge_deep(cached, json.loads(deep_path(parsed["id"]).read_text()))
+                except Exception as e:  # noqa
+                    print("merge_deep failed", e)
             yield sse("resolve", {"id": cached["id"], "url": cached["url"], "name": cached["product"]["name"], "brand": cached["product"]["brand"],
                                   "model": cached["product"]["model"], "short": cached["product"]["short"], "aliases": cached["product"]["aliases"], "final": True})
             await asyncio.sleep(0.4)
@@ -2078,6 +2086,15 @@ async def api_pulse(request: Request, url: str = "", mode: str = "live"):
                 report = await pulse.run()
                 cache_path(parsed["id"]).write_text(json.dumps(report, ensure_ascii=False))
                 await q.put(("report", report))
+                try:
+                    now2 = time.time()
+                    while _deep_log and now2 - _deep_log[0] > 3600:
+                        _deep_log.popleft()
+                    if len(_deep_log) < DEEP_SCANS_PER_HOUR and not any(v.get("status") == "running" for v in _deep.values()) and not deep_path(parsed["id"]).exists():
+                        _deep_log.append(now2)
+                        await start_deep_scan(parsed["id"], report)
+                except Exception as e:  # noqa
+                    print("auto deep scan failed", e)
             except Exception as e:  # noqa
                 import traceback
                 traceback.print_exc()
@@ -2135,22 +2152,182 @@ async def deep_start(request: Request, id: str = ""):
         return JSONResponse({"status": "error", "message": "deep-scan budget in use — try again in a few minutes"}, status_code=429)
     _deep_log.append(now)
     P = rep["product"]
+    started = await start_deep_scan(item_id, rep)
+    if not started:
+        return JSONResponse({"status": "error", "message": "agent start failed"}, status_code=502)
+    return {"status": "running"}
+
+
+async def start_deep_scan(item_id, rep):
+    """Kick off an Exa Agent run over the Affiliate.com catalog (Exa Connect) for live offers."""
+    P = rep["product"]
     q = (f"Find every current retail offer for the exact {P['brand']} {P['model'] or ''} {P['category']} — \"{P['name']}\""
-         + (f" (UPC {P['upc']})" if P.get("upc") else "") + ". New condition only, US merchants. For each offer give merchant name, price in USD, "
-         f"in-stock status, condition and the direct product URL. Include walmart.com offers if the catalog has them.")
+         + (f" (UPC {P['upc']})" if P.get("upc") else "") + ". New condition only, US merchants. For each offer give merchant name, the variant "
+         f"(color / bundle) if the listing is a variant, the price in USD a customer pays right now (the sale price if on sale), the regular list "
+         f"price if one is shown, in-stock status, condition and the direct product URL. Include every walmart.com listing you can find, with its item id in the URL.")
     body = {"query": q, "dataSources": [{"provider": "affiliate"}],
-            "outputSchema": {"type": "object", "required": ["offers"], "properties": {"offers": {"type": "array", "maxItems": 15, "items": {
+            "outputSchema": {"type": "object", "required": ["offers"], "properties": {"offers": {"type": "array", "maxItems": 20, "items": {
                 "type": "object", "required": ["merchant", "price_usd", "url"], "properties": {
-                    "merchant": {"type": "string"}, "price_usd": {"type": "number"}, "in_stock": {"type": "boolean"},
-                    "url": {"type": "string"}, "condition": {"type": "string"}}}}}}}
+                    "merchant": {"type": "string"}, "variant": {"type": "string"}, "price_usd": {"type": "number"}, "list_price_usd": {"type": "number"},
+                    "in_stock": {"type": "boolean"}, "url": {"type": "string"}, "condition": {"type": "string"}}}}}}}
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(EXA_BASE + "/agent/runs", json=body, headers={"Authorization": f"Bearer {EXA_API_KEY}", "Content-Type": "application/json"})
     if r.status_code >= 300:
-        return JSONResponse({"status": "error", "message": f"agent start failed ({r.status_code})"}, status_code=502)
+        return False
     run_id = r.json().get("id")
-    _deep[item_id] = {"status": "running", "run_id": run_id, "started": now}
+    _deep[item_id] = {"status": "running", "run_id": run_id, "started": time.time()}
     (CACHE_DIR / f"{item_id}.deep.run.json").write_text(json.dumps(_deep[item_id]))
-    return {"status": "running"}
+    return True
+
+
+def merge_deep(rep, deep):
+    """Fold live Affiliate.com offers into a report: listing rows, price series end-points, Walmart's own price, sibling walmart listings."""
+    if not deep or deep.get("status") != "done":
+        return rep
+    rep = json.loads(json.dumps(rep))
+    L, P, D = rep["listings"], rep["price"], rep["dupes"]
+    as_of_day = WINDOW_DAYS - 1
+    def nk(s):
+        return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+    def canon(m):
+        ml = nk(m)
+        for h, name in BIG_BOX.items():
+            if nk(name) == ml or h.split(".")[0] == ml:
+                return name
+        return m
+    fresh_rows = {}
+    for o in deep.get("offers") or []:
+        price = to_float(o.get("price_usd"))
+        if not price:
+            continue
+        name = canon(o.get("merchant") or "")
+        row = next((r for r in L["rows"] if nk(r["merchant"]) == nk(name) or (nk(r["merchant"]) and nk(r["merchant"]) in nk(name))), None)
+        lp = to_float(o.get("list_price_usd"))
+        on_sale = bool(lp and lp > price + 0.5)
+        if row:
+            row.update({"price": price, "url": o.get("url") or row["url"], "price_source": "live · Affiliate.com feed", "price_note": None,
+                        "list_price": lp if on_sale else None, "on_sale": on_sale,
+                        "stock": "in stock" if o.get("in_stock") is True else ("OOS" if o.get("in_stock") is False else row["stock"])})
+        else:
+            host = host_of(o.get("url") or "")
+            row = {"merchant": name, "price": price, "delta30": None, "delta30_note": None, "stock": "in stock" if o.get("in_stock") is True else ("OOS" if o.get("in_stock") is False else "unknown"),
+                   "type": "exact", "first_seen": None, "url": o.get("url") or "", "long_tail": host not in BIG_BOX, "seller": None,
+                   "price_source": "live · Affiliate.com feed", "list_price": lp if on_sale else None, "on_sale": on_sale, "deep": True}
+            L["rows"].append(row)
+        fresh_rows[nk(name)] = row
+        # today's point on the price chart
+        sm = next((m for m in P["series"]["merchants"] if nk(m["name"]) == nk(name)), None)
+        if sm:
+            sm["points"] = [pt for pt in sm["points"] if pt["day"] != as_of_day] + [{"day": as_of_day, "price": price, "url": row["url"]}]
+        else:
+            i = len(P["series"]["merchants"])
+            P["series"]["merchants"].append({"key": re.sub(r"[^a-z0-9]+", "", name.lower())[:16] or f"m{i}", "name": name, "color": MERCHANT_COLORS[i % len(MERCHANT_COLORS)],
+                                             "long_tail": host_of(row["url"]) not in BIG_BOX, "points": [{"day": as_of_day, "price": price, "url": row["url"]}], "oos_from_day": None})
+    # recompute the series band from merchant points (carry forward)
+    med, lo, hi = [], [], []
+    for d in range(WINDOW_DAYS):
+        vals = []
+        for sm in P["series"]["merchants"]:
+            cur = None
+            for pt in sorted(sm["points"], key=lambda x: x["day"]):
+                if pt["day"] <= d:
+                    cur = pt["price"]
+            if cur is not None and not (sm.get("oos_from_day") is not None and d >= sm["oos_from_day"]):
+                vals.append(cur)
+        if vals:
+            med.append(round(statistics.median(vals), 2)); lo.append(round(min(vals), 2)); hi.append(round(max(vals), 2))
+        else:
+            med.append(None); lo.append(None); hi.append(None)
+    P["series"]["median"], P["series"]["low"], P["series"]["high"] = med, lo, hi
+    P["median_now"] = med[-1]
+    P["n_merchants"] = len(P["series"]["merchants"])
+    # walmart
+    w = deep.get("walmart")
+    if w and w.get("price"):
+        P["walmart"] = {"price": w["price"], "observed": (deep.get("as_of") or "")[:10], "source_label": "Affiliate.com catalog via Exa Connect", "url": w.get("url") or rep["url"]}
+        L["walmart_price"] = w["price"]
+        L["walmart_url"] = w.get("url") or rep["url"]
+        if P["median_now"]:
+            diff = w["price"] - P["median_now"]
+            P["headline"]["em"] = (f"Walmart at ${w['price']:.2f} today (Affiliate.com catalog) — "
+                                   + (f"${diff:.2f} above the web median." if diff > 0.5 else f"${-diff:.2f} below the web median." if diff < -0.5 else "right at the web median."))
+        if P["series"]["low"][-1] is not None:
+            P["walmart_position"] = "lowest now" if w["price"] <= P["series"]["low"][-1] + 0.01 else "not the lowest today"
+            P["walmart_lowest_day"] = as_of_day if w["price"] <= P["series"]["low"][-1] + 0.01 else None
+    # rows: ordering, range, ticks, chips, headline
+    priced = [r for r in L["rows"] if r["price"] and r["stock"] != "OOS"]
+    L["rows"].sort(key=lambda r: (r["price"] is None, r["stock"] == "OOS", r["price"] or 0))
+    L["rows"] = L["rows"][:12]
+    L["range"] = {"low": min(r["price"] for r in priced), "high": max(r["price"] for r in priced)} if priced else L.get("range")
+    ticks = []
+    for r in priced:
+        t = next((t for t in ticks if abs(t["price"] - r["price"]) < 0.01), None)
+        if t:
+            t["labels"].append(r["merchant"])
+        else:
+            ticks.append({"price": r["price"], "labels": [r["merchant"]]})
+    L["ticks"] = ticks[:5]
+    wp = L.get("walmart_price")
+    live_in_stock = {nk(r["merchant"]) for r in L["rows"] if r.get("price_source", "").startswith("live") and r["stock"] == "in stock"}
+    chips = [c for c in L.get("chips", []) if c["kind"] not in ("below_walmart",) and not (c["kind"] == "competitor_oos" and any(nk(m) in nk(c["text"]) for m in live_in_stock))]
+    for r in priced:
+        if r.get("on_sale"):
+            chips.append({"kind": "price_dropped", "text": f"on_sale · {r['merchant']} ${r['list_price']:.2f} → ${r['price']:.2f}", "tone": "red"})
+    if wp:
+        for r in priced:
+            if r["price"] < wp - 0.5:
+                chips.append({"kind": "below_walmart", "text": f"below_walmart · {r['merchant']} −${wp - r['price']:.2f}", "tone": "red"})
+    L["chips"] = chips[:7]
+    if wp and priced:
+        L["headline"] = {"lead": "Walmart is ", "accent": "not the lowest price."} if min(r["price"] for r in priced) < wp - 0.5 else {"lead": "Walmart is ", "accent": "the web low today."}
+    L["n_merchants"] = len(L["rows"])
+    L["live_source"] = "Affiliate.com catalog via Exa Connect · " + (deep.get("as_of") or "")[:16].replace("T", " ") + " UTC"
+    L["deep_scan"]["status"] = "done"
+    # dupes: walmart offers by item id
+    offers_w = deep.get("walmart_offers") or ([] if not w else [w])
+    seen_ids = {d["id"] for d in D["exact"]} | {d["id"] for d in D["other"]} | {rep["id"]}
+    for o in offers_w:
+        m = re.search(r"/(?:ip|product)/(?:[^?#]*/)?(\d{4,})(?:[/?#]|$)", o.get("url") or "")
+        if not m:
+            continue
+        did = m.group(1)
+        if did == rep["id"]:
+            D["primary"]["price"] = o["price"]; D["primary"]["seller"] = o.get("merchant") or "Walmart"; D["primary"]["confirmed"] = True
+            continue
+        target = next((d for d in D["exact"] + D["other"] if d["id"] == did), None)
+        if target:
+            target.update({"price": o["price"], "seller": o.get("merchant") or "Walmart", "confirmed": True, "url": o.get("url") or target["url"]})
+        elif did not in seen_ids:
+            base = f"{rep['product'].get('brand', '')} {rep['product'].get('model', '')}".strip() or rep["product"].get("short", "")
+            D["exact"].append({"id": did, "url": o.get("url"), "title": f"{base} {o.get('variant') or ''}".strip() + f" · walmart.com listing {did}", "kind": "exact",
+                               "indexed": None, "price": o["price"], "seller": o.get("merchant") or "Walmart", "confirmed": True})
+            seen_ids.add(did)
+    D["exact"].sort(key=lambda d: (not d.get("confirmed"), d.get("price") or 1e9))
+    D["count_exact"] = len(D["exact"])
+    if any(d.get("confirmed") for d in D["exact"]) or D["primary"].get("confirmed"):
+        D["note"] = ("Prices and sellers marked ✓ come from the Affiliate.com catalog via Exa Connect (live). Review counts are not readable from the open web — walmart.com blocks crawlers. "
+                     "Listings without ✓ come from Exa's index of walmart.com titles and are unverified.")
+    # board lines
+    for b in rep["board"]:
+        if b["key"] == "listings" and wp and priced:
+            under = sorted([r for r in priced if r["price"] < wp - 0.5], key=lambda r: r["price"])
+            b["status"] = "act" if under else "clear"
+            b["line1"] = "not the lowest price" if under else "lowest price on the web today"
+            b["line1_color"] = "red" if under else "grey"
+            b["line2"] = " · ".join(f"{r['merchant']} −${wp - r['price']:.0f}" for r in under[:2]) if under else f"web low ${L['range']['low']:.2f} · high ${L['range']['high']:.2f}"
+        if b["key"] == "price" and wp and P.get("median_now"):
+            diff = wp - P["median_now"]
+            b["line2"] = f"Walmart {'+' if diff >= 0 else '−'}${abs(diff):.2f} vs median"
+            b["line2_color"] = "red" if diff > 0.5 else "grey"
+            b["status"] = "act" if diff > P["median_now"] * 0.05 else ("watch" if diff > 0.5 else "clear")
+        if b["key"] == "dupes":
+            n = D["count_exact"]
+            b["status"] = "watch" if n else "clear"
+            b["line1"] = f"{n} sibling walmart.com listing{'s' if n != 1 else ''}" if n else "single walmart.com listing"
+            cheaper = [d for d in D["exact"] if d.get("price") and D["primary"].get("price") and d["price"] < D["primary"]["price"] - 0.5]
+            b["line2"] = f"{cheaper[0]['title'][:24]} ${cheaper[0]['price']:.2f} under primary" if cheaper else b["line2"]
+    rep["live_merged"] = True
+    return rep
 
 
 @app.get("/api/deepscan")
@@ -2180,6 +2357,7 @@ async def deep_status(id: str = ""):
             return st
         offers = []
         walmart = None
+        walmart_offers = []
         seen = set()
         for o in ((d.get("output") or {}).get("structured") or {}).get("offers", []) or []:
             price = to_float(o.get("price_usd"))
@@ -2192,16 +2370,19 @@ async def deep_status(id: str = ""):
                 continue
             merchant = BIG_BOX.get(host) or norm(o.get("merchant") or host)[:40]
             if host.endswith("walmart.com"):
+                entry = {"price": price, "url": url, "merchant": norm(o.get("merchant") or "Walmart")[:40], "variant": norm(o.get("variant") or "")[:80] or None,
+                         "list_price_usd": to_float(o.get("list_price_usd")), "in_stock": o.get("in_stock")}
+                walmart_offers.append(entry)
                 if not walmart or price < walmart["price"]:
-                    walmart = {"price": price, "url": url, "merchant": norm(o.get("merchant") or "Walmart")[:40]}
+                    walmart = entry
                 continue
             k = merchant.lower()
             if k in seen:
                 continue
             seen.add(k)
-            offers.append({"merchant": merchant, "price_usd": price, "in_stock": o.get("in_stock"), "url": url, "condition": cond or "new",
-                           "long_tail": host not in BIG_BOX})
-        res = {"status": "done", "offers": sorted(offers, key=lambda o: o["price_usd"]), "walmart": walmart,
+            offers.append({"merchant": merchant, "price_usd": price, "list_price_usd": to_float(o.get("list_price_usd")), "variant": norm(o.get("variant") or "")[:80] or None,
+                           "in_stock": o.get("in_stock"), "url": url, "condition": cond or "new", "long_tail": host not in BIG_BOX})
+        res = {"status": "done", "offers": sorted(offers, key=lambda o: o["price_usd"]), "walmart": walmart, "walmart_offers": walmart_offers,
                "cost": (d.get("costDollars") or {}).get("total"), "as_of": now_utc().strftime("%Y-%m-%dT%H:%M:%SZ"),
                "elapsed": int(time.time() - st["started"])}
         deep_path(item_id).write_text(json.dumps(res))

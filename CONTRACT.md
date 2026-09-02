@@ -89,7 +89,8 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
     "range": { "low": 87.99, "high": 149.99 }, "walmart_price": 119.99 | null,
     "ticks": [ { "price": 87.99, "labels": ["Newegg (WovenNest)"] }, … ],   // ≤ 5 tick groups for the price bar, ascending
     "chips": [ { "kind": "price_dropped|new_seller|below_walmart|competitor_oos", "text": "price_dropped · Target −$20 (Aug 29)", "tone": "red|amber|green" } ],
-    "rows": [ { "merchant": "Amazon", "price": 119.99 | null, "delta30": -20.00 | null, "delta30_note": "new Aug 20" | null,
+    "live_source": "Affiliate.com catalog via Exa Connect · 2026-09-02 19:20 UTC" | absent,   // present once live offers were merged (report.live_merged = true)
+    "rows": [ { "merchant": "Amazon", "price": 119.99 | null, "price_source": "live · Affiliate.com feed" | "indexed page" | null, "on_sale": true, "list_price": 469.99 | null, "delta30": -20.00 | null, "delta30_note": "new Aug 20" | null,
                 "stock": "in stock|OOS|unknown", "type": "exact|variant|refurbished", "first_seen": "Mar 2026" | null,
                 "url": "…", "long_tail": false, "seller": "WovenNest via Newegg" | null } ],
     "n_merchants": 6, "live_date": "2026-09-02",
@@ -98,7 +99,7 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
 
   "dupes": {
     "primary": { "id": "1967919184", "url": "…", "title": "…" },
-    "exact":   [ { "id": "516008834", "url": "…", "title": "…", "kind": "exact", "indexed": "2025-08-23" | null, "price": null, "seller": null } ],
+    "exact":   [ { "id": "516008834", "url": "…", "title": "…", "kind": "exact", "indexed": "2025-08-23" | null, "price": 349.0 | null, "seller": "Walmart" | null, "confirmed": true } ],   // confirmed = present in the Affiliate.com catalog (live price)
     "other":   [ { "id": "…", "url": "…", "title": "…", "kind": "refurbished|variant|accessory", "indexed": null } ],
     "count_exact": 1,
     "note": "walmart.com blocks crawlers, so price and review counts for sibling listings are not readable from the open web; listing identity comes from Exa's index of walmart.com titles.",
