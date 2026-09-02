@@ -2214,7 +2214,7 @@ def merge_deep(rep, deep):
             continue
         name = canon(o.get("merchant") or "")
         row = next((r for r in L["rows"] if nk(r["merchant"]) == nk(name) or (nk(r["merchant"]) and nk(r["merchant"]) in nk(name)) or (nk(name) and nk(name) in nk(r["merchant"]))), None)
-        if row is not None and row.get("price_source", "").startswith("live"):
+        if row is not None and (row.get("price_source") or "").startswith("live"):
             continue          # this merchant already has its most exact live offer
         lp = to_float(o.get("list_price_usd"))
         on_sale = bool(lp and lp > price + 0.5)
@@ -2284,7 +2284,7 @@ def merge_deep(rep, deep):
             ticks.append({"price": r["price"], "labels": [r["merchant"]]})
     L["ticks"] = ticks[:5]
     wp = L.get("walmart_price")
-    live_in_stock = {nk(r["merchant"]) for r in L["rows"] if r.get("price_source", "").startswith("live") and r["stock"] == "in stock"}
+    live_in_stock = {nk(r["merchant"]) for r in L["rows"] if (r.get("price_source") or "").startswith("live") and r["stock"] == "in stock"}
     chips = [c for c in L.get("chips", []) if c["kind"] not in ("below_walmart",) and not (c["kind"] == "competitor_oos" and any(nk(m) in nk(c["text"]) for m in live_in_stock))]
     for r in priced:
         if r.get("on_sale"):
