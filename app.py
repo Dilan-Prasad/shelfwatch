@@ -1404,8 +1404,8 @@ class Pulse:
         # a "listing" priced at a small fraction of the market is an accessory or a bundle the classifier let through
         anchor = None
         priced_all = [r["price"] for r in rows if r["price"]]
-        if wprice:
-            anchor = wprice
+        if walmart and walmart.get("price"):
+            anchor = walmart["price"]
         elif len(priced_all) >= 3:
             anchor = statistics.median(priced_all)
         if anchor:
