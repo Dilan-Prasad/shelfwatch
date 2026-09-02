@@ -11,7 +11,7 @@ Design source of truth: `design/product-pulse-v2.dc.html` (Claude Design export)
   - `resolve`  `{ "id":"1967919184", "url":"<normalized walmart url>", "name":"Ninja AF101 Air Fryer, 4-Quart …", "brand":"Ninja", "model":"AF101", "short":"Ninja / AF101 (4 qt)", "aliases":[{"text":"Ninja AF101","support":0.99},…] }`
      `aliases` arrive in 1–3 items; `support` is a 0–1 fraction of resolved web listings whose title matched the alias (deterministic).
   - `surface`  `{ "key":"youtube", "label":"youtube", "status":"queued|scanning|done|thin|indirect|degraded", "n":12, "note":"…" }` — one event per status change. Surface keys in order: `reddit, youtube, tiktok, news, forums, retail, cpsc`. (`retail` = amazon/target/bestbuy review pages; walmart.com is never a sentiment source.)
-  - `count`    `{ "mentions": 87 }` — total unique external mentions retrieved for the last 90 days (this is what the big animated number shows; caption "external mentions found in the last 90 days").
+  - `count`    `{ "mentions": 87, "window_days": 365 }` — total unique external mentions retrieved for the last 12 months (the big animated number; caption "external mentions found in the last 12 months").
   - `report`   full report JSON (schema below). After this the frontend may switch to the Report view (auto after the count animation, or when the user clicks "skip to report").
   - `error`    `{ "message":"…", "code":"not_walmart|not_found|rate_limited|upstream" }`
   - `call`     `{ "endpoint":"/search", "tag":"youtube", "ms":1432, "cost":0.021 }` — optional telemetry, one per Exa call (for an "under the hood" drawer; frontend may ignore).
@@ -31,7 +31,7 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
   "product": { "name": "…", "brand": "Ninja", "model": "AF101", "upc": "622356554572"|null, "category": "air fryer",
                "short": "Ninja / AF101 (4 qt)", "aliases": [{"text":"…","support":0.99}] },
   "surfaces": [ { "key":"youtube","label":"youtube","status":"done","n":12,"note":"" }, … ],   // 7 entries, final statuses
-  "mentions": { "total": 87, "last30": 31, "prev30": 24, "velocity_pct": 12 | null, "window_days": 90 },
+  "mentions": { "total": 87, "last30": 31, "prev30": 24, "velocity_pct": 12 | null, "window_days": 365 },
 
   "verdict": { "lead": "Positive but cooling.",                       // big serif line, plain
                "em": "One pain cluster is growing:",                 // italic grey part (may be "")
@@ -70,14 +70,15 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
     "range": { "low": 89.99, "high": 129.99 } | null,
     "n_observations": 17, "n_merchants": 6,
     "series": {
-      "days": 90, "start_date": "2026-06-04",            // day 0 … day 89 = as_of date
+      "days": 365, "start_date": "2025-09-03",           // day 0 … day 364 = as_of date
       "merchants": [ { "key":"amazon", "name":"Amazon", "color":"oklch(74% 0.12 250)", "long_tail": false,
                        "points": [ {"day": 12, "price": 119.99, "url":"…"}, … ],   // dated observations; frontend draws a step line carrying each price forward to the next point / today
                        "oos_from_day": 72 | null } ],
       "median": [null, …, 104.99],   // 90 values (null before the first observation)
       "low":    [ … 90 ], "high": [ … 90 ]
     },
-    "events": [ { "n": 1, "day": 38, "date": "2026-07-12", "label": "Target promo: $119.99 → $109.99", "url": "…", "kind": "price_drop|new_low|new_seller|oos|restock|price_increase" } ],  // ≤ 4, chronological
+    "events": [ { "n": 1, "day": 38, "date": "2026-07-12", "label": "Target promo: $119.99 → $109.99", "url": "…", "kind": "price_drop|new_low|new_seller|oos|restock|price_increase" } ],  // ≤ 6, chronological
+    "amazon_history": { "label": "Amazon price history", "host": "camelcamelcamel.com", "current": 119.99, "lowest": 59.99, "highest": 129.99, "average": 109.88, "url": "…" } | null,   // tracker-site stats (camelcamelcamel, pricehistory.app, brickeconomy…)
     "walmart_position": "was lowest 74 days ago" | "lowest now" | "never lowest in window" | "unknown (walmart price not observed)",
     "headline": { "lead": "Web median price ", "accent": "down 13%", "tail": " over 90 days.", "em": "Walmart last observed at $119.99 (Aug 22) — no longer the price anchor." },
     "method_note": "exact-product listings only … Series built from N dated price observations across M merchants; each merchant line carries its last observed price forward."
@@ -108,7 +109,8 @@ Intake validation (client AND server): accept `https?://(www\.|business\.)?walma
     "verified": "2026-09-02",
     "model_level": { "status": "clear|act|thin", "headline": "No CPSC recall for the AF101 in the last 24 months.",
                      "items": [ { "product": "…", "date": "2025-05-01", "hazard": "…", "units": "…", "url": "…" } ] },
-    "brand_family": [ { "product": "SharkNinja Foodi OP300 pressure cookers", "date": "2025-05-01", "hazard": "burn", "units": "~1.8M", "url": "https://www.cpsc.gov/Recalls/…", "why": "sibling product, not this model" } ],
+    "brand_family": [ { "product": "SharkNinja Foodi OP300 pressure cookers", "date": "2025-05-01", "hazard": "burn", "units": "~1.8M units", "url": "https://www.cpsc.gov/Recalls/…", "why": "sibling product, not this model" } ],
+    "safety_news": [ { "title": "…", "url": "…", "date": "2026-06-30", "kind": "recall|lawsuit|incident_report|regulatory|investigation", "product": "…", "issue": "one sentence", "applies_to_model": false, "host": "aboutlawsuits.com" } ],   // ≤ 6, brand-level safety coverage from news + agency surfaces over 12 months
     "complaint_scan": { "count": 0, "items": [ {"title":"…","url":"…","date":"…"} ] }
   },
 

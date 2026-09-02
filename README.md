@@ -12,20 +12,22 @@ design: Claude Design → `design/product-pulse-v2.dc.html`
 
 ```
 input:   https://www.walmart.com/ip/<anything>/<item id>      (any Walmart product URL, slug optional)
-output:  a five-section pulse report, streamed while it is built (~25 s, ~$0.45 of Exa credits)
+output:  a five-section pulse report, streamed while it is built (~30 s, ~$0.90 of Exa credits, 31 calls)
 ```
 
 | # | Section | Question it answers | Exa work behind it |
 |---|---|---|---|
 | 00 | Entity resolution | Which product is this, and what does the web call it? | `/answer` + `outputSchema` (brand, model, UPC, category, aliases) cross-checked against Exa's index of walmart.com titles. Alias *support* = share of retrieved listings whose title matches the alias. |
-| 01 | Sentiment Pulse | How do people actually feel about it? | 7 surfaces in parallel — YouTube, TikTok, news (`category: news`), forums & blogs (`excludeDomains` big-box + video), retail review pages (Amazon / Target / Best Buy…), Reddit *via pages that quote it*, CPSC. Each `/search` carries `highlights` + a schema `summary` that labels sentiment, whether a complaint is actually voiced, its category, a verbatim quote, and a safety flag. |
-| 02 | Price History | Is it getting cheaper or pricier across the web? | Dated price observations from deal posts and merchant listings (`startPublishedDate` 90 d), Amazon history via camelcamelcamel, carried forward per merchant into a low/median/high band. Trend is only reported for merchants tracked ≥30 days (a median that "moves" because coverage grew is not a trend). |
+| 01 | Sentiment Pulse | How do people actually feel about it? | 7 surfaces in parallel over a 12-month window — YouTube (neural + keyword), TikTok, news (`category: news`, 30 results), forums & blogs (neural + a 50-result keyword pass + a community-domain pass: Quora, RedFlagDeals, Slickdeals, Eurobricks…), retail review pages (15 Amazon / Target / Best Buy… pages), Reddit (`/answer` returning verbatim Reddit quotes with the pages that cite them, plus RedditRecs), CPSC. Each `/search` carries `highlights` + a schema `summary` that labels sentiment, whether a complaint is actually voiced, its category, a verbatim quote, and a safety flag. |
+| 02 | Price History | Is it getting cheaper or pricier across the web? | 12 months of dated price observations from four deal/sale/price-drop query variants, news deal coverage, merchant listings, `/answer` (dated observations with source URLs) and tracker sites (camelcamelcamel, pricehistory.app, brickeconomy…), carried forward per merchant into a low/median/high band. Trend is only reported for merchants tracked ≥30 days (a median that "moves" because coverage grew is not a trend). |
 | 03 | Listing Radar | Who sells this exact product right now, and where does Walmart stand? | Big-box `includeDomains` + a long-tail sweep + an exact-keyword pass, each listing classified exact / variant / accessory / refurbished by a schema summary; `maxAgeHours` refreshes stale listing pages. Opt-in **deep scan** runs an Exa Agent over the Affiliate.com catalog (Exa Connect) for live offers, including Walmart's own price. |
 | 04 | Internal Dupes | Is Walmart selling this product against itself? | Exa's index of walmart.com titles (`includeDomains: walmart.com`), classified against the primary listing: exact sibling pages vs variants, refurbished and accessories. |
-| 05 | Recall & Safety | Is anything actually unsafe? | `includeDomains: cpsc.gov`, 24-month window, three queries (model / brand / category). Model-level recall vs *brand-family spillover* (e.g. SharkNinja's Foodi pressure-cooker recall shown on a Ninja air-fryer report); safety-classified complaints from the mention graph are tracked separately from quality complaints. |
+| 05 | Recall & Safety | Is anything actually unsafe? | `includeDomains: cpsc.gov` (model 24 months, brand 5 years, three queries) plus a safety-news lane (news category + recalls.gov / FDA / NHTSA / class-action sites, 12 months) classified recall / lawsuit / incident / regulatory. Model-level recall vs *brand-family spillover* (e.g. SharkNinja's Foodi pressure-cooker recall or Stanley's 2.6M-mug recall on a sibling product's report); safety-classified complaints from the mention graph are tracked separately from quality complaints. |
 
 The verdict sentence, signal-board statuses (act now / watch / clear / thin data) and every trend are computed
 deterministically from those labels — the model classifies pages, code decides.
+
+`tools/bench.py` is the coverage benchmark that chose these strategies (relevant hits per search type / window / result count / domain set / `/answer`, on four products).
 
 ## Honesty rules (what the demo will *not* do)
 

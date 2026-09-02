@@ -378,3 +378,15 @@ button{font-family:inherit;}
 .pstrip.ah > div{flex:1;border-right:0}
 
 .gen-card.instant .gen-name,.gen-card.instant .gen-model,.gen-card.instant .alias,.gen-card.instant .gen-resolved{animation:none !important;opacity:1}
+
+/* safety news */
+.snews{margin-top:22px;padding-top:16px;border-top:1px solid var(--line, #1B2437)}
+.snews-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.snews .lab{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6E7A94}
+.snews ul{list-style:none;margin:12px 0 0;padding:0}
+.snews li{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid #161E30;font-size:14px;line-height:1.45}
+.snews li a{color:#EEF1F7}
+.snews .issue{color:#A9B3C9;font-size:13px;flex-basis:100%;padding-left:66px}
+.snews .kind{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#F5B14A;border:1px solid rgba(245,177,74,.35);border-radius:999px;padding:2px 7px;min-width:56px;text-align:center}
+.snews .kind.recall{color:#FF7A70;border-color:rgba(255,90,78,.4)}
+.snews .ev-meta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6E7A94}
